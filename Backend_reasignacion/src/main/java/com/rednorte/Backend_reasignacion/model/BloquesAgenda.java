@@ -43,4 +43,7 @@ public class BloquesAgenda {
         this.profesionalId = profesionalId;
     }
 
+    public BloquesAgenda() {
+    }
+
 }

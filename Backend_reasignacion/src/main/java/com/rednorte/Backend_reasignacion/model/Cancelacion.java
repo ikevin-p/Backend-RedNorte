@@ -1,6 +1,5 @@
-
-
 package com.rednorte.Backend_reasignacion.model;
+
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
@@ -12,10 +11,12 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "cancelaciones")
 @Data
+@NoArgsConstructor
 public class Cancelacion {
 
     @Id
@@ -23,16 +24,14 @@ public class Cancelacion {
     private Long id;
 
     @OneToOne
-    @JoinColumn(name = "bloque_id", referencedColumnName = "id")
+    @JoinColumn(name = "bloque_id", referencedColumnName = "BloquesAgendaid") 
     private BloquesAgenda bloque;
 
-    @Column(name = "fecha_cancelacion")
     private LocalDateTime fechaCancelacion;
-
     private String motivo;
 
     @Column(name = "procesado")
-    private Boolean procesado = false; 
+    private Boolean procesado = false;
 
     public Cancelacion(BloquesAgenda bloque, LocalDateTime fechaCancelacion, Long id, String motivo) {
         this.bloque = bloque;

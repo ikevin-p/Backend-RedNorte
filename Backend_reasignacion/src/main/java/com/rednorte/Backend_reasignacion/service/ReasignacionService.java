@@ -19,53 +19,53 @@ public class ReasignacionService {
 
     @Autowired
     private BloquesAgendaRepository bloquesRepository;
-
     @Autowired
     private CancelacionRepository cancelacionRepository;
-
     @Autowired
     private ReasignacionRepository reasignacionRepository;
-
     @Autowired
     private RestTemplate restTemplate;
 
+    /**
+     * SOLICITUD 1: Procesa estrictamente la cancelación de la cita.
+     */
     @Transactional
-    public void ejecutarReasignacionAutomatica(Long idBloque, String motivoCancelacion) {
-        //Buscar el bloque de agenda usando tu atributo BloquesAgendaid
+    public Cancelacion procesarSoloCancelacion(Long idBloque, String motivo) {
         BloquesAgenda bloque = bloquesRepository.findById(idBloque)
                 .orElseThrow(() -> new RuntimeException("No se encontró el bloque: " + idBloque));
 
-        //Registrar la Cancelacion (usando tu constructor)
-        Cancelacion nuevaCancelacion = new Cancelacion(bloque, LocalDateTime.now(), null, motivoCancelacion);
-        cancelacionRepository.save(nuevaCancelacion);
+        // Registrar la cancelación en la BD
+        Cancelacion cancelacion = new Cancelacion(bloque, LocalDateTime.now(), null, motivo);
+        return cancelacionRepository.save(cancelacion);
+    }
 
-        //COMUNICACIÓN DOCKER: Solicitar un paciente prioritario al otro Microservicio
-        // 'ms-lista-espera' es el nombre del servicio definido en tu docker-compose.yml
-        String url = "http://ms-lista-espera:8081/api/lista-espera/obtener-prioritario/" + bloque.getEspecialidadId();
+    /**
+     * SOLICITUD 2: Procesa la reasignación buscando un nuevo paciente via
+     * Docker.
+     */
+    @Transactional
+    public void ejecutarReasignacion(Cancelacion cancelacion) {
+        // COMUNICACIÓN DOCKER: 'ms-lista-espera' es el nombre del servicio en docker-compose
+        String url = "http://ms-lista-espera:8081/api/lista-espera/obtener-prioritario/"
+                + cancelacion.getBloque().getEspecialidadId();
 
         Long idNuevoPaciente;
         try {
-            // Intentamos obtener el ID del paciente que más necesita la hora [cite: 23, 30]
+            // Llamada al microservicio externo
             idNuevoPaciente = restTemplate.getForObject(url, Long.class);
         } catch (Exception e) {
-            // Si el otro servicio falla, el Circuit Breaker debería actuar aquí [cite: 30]
             idNuevoPaciente = null;
         }
 
-        //Registrar en ReasignacionLog 
+        // Registrar el resultado en el Log de auditoría
         boolean exito = (idNuevoPaciente != null);
-        ReasignacionLog logReasignacion = new ReasignacionLog(
-                nuevaCancelacion,
-                exito,
-                LocalDateTime.now(),
-                null,
-                idNuevoPaciente
+        ReasignacionLog log = new ReasignacionLog(
+                cancelacion, exito, LocalDateTime.now(), null, idNuevoPaciente
         );
+        reasignacionRepository.save(log);
 
-        reasignacionRepository.save(logReasignacion);
-
-        // Marcamos como procesado para cumplir con tu lógica de control [cite: 23]
-        nuevaCancelacion.setProcesado(true);
-        cancelacionRepository.save(nuevaCancelacion);
+        // Marcar la cancelación como procesada tras el intento de reasignación
+        cancelacion.setProcesado(true);
+        cancelacionRepository.save(cancelacion);
     }
 }

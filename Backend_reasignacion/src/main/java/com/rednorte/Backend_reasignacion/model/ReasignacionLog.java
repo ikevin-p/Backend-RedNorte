@@ -1,9 +1,5 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
-
 package com.rednorte.Backend_reasignacion.model;
+
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
@@ -15,10 +11,12 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "reasignaciones_log")
+@Table(name = "reasignacion_logs")
 @Data
+@NoArgsConstructor
 public class ReasignacionLog {
 
     @Id
@@ -29,19 +27,17 @@ public class ReasignacionLog {
     @JoinColumn(name = "cancelacion_id")
     private Cancelacion cancelacion;
 
-    @Column(name = "paciente_id")
-    private Long pacienteId; // Referencia lógica al paciente del otro microservicio
-
-    @Column(name = "fecha_reasignacion")
+    private Boolean exito;
     private LocalDateTime fechaReasignacion;
 
-    private Boolean exito;
+    @Column(name = "paciente_id_nuevo")
+    private Long pacienteIdNuevo;
 
-    public ReasignacionLog(Cancelacion cancelacion, Boolean exito, LocalDateTime fechaReasignacion, Long id, Long pacienteId) {
+    public ReasignacionLog(Cancelacion cancelacion, Boolean exito, LocalDateTime fechaReasignacion, Long id, Long pacienteIdNuevo) {
         this.cancelacion = cancelacion;
         this.exito = exito;
         this.fechaReasignacion = fechaReasignacion;
         this.id = id;
-        this.pacienteId = pacienteId;
+        this.pacienteIdNuevo = pacienteIdNuevo;
     }
 }
