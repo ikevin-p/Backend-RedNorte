@@ -1,0 +1,5 @@
+com\rednorte\mslistaespera\MsListaEsperaApplication.class
+com\rednorte\mslistaespera\controller\SolicitudEsperaController.class
+com\rednorte\mslistaespera\service\SolicitudEsperaService.class
+com\rednorte\mslistaespera\model\SolicitudEspera.class
+com\rednorte\mslistaespera\repository\SolicitudEsperaRepository.class

@@ -1,0 +1,31 @@
+services:
+  ms-reasignacion:
+    build: ./ms-reasignacion
+    container_name: cnt-ms-reasignacion
+    ports:
+      - "8082:8081"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db-ms-reasignacion:3306/db_reasignacion?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Santiago
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=rednorte88
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    depends_on:
+      db-ms-reasignacion:
+        condition: service_healthy
+
+  db-ms-reasignacion:
+    image: mysql:8.4
+    container_name: cnt-db-reasignacion
+    environment:
+      - MYSQL_DATABASE=db_reasignacion
+      - MYSQL_ROOT_PASSWORD=rednorte88
+    ports:
+      - "3307:3306"
+    volumes:
+      - vol_reasignacion_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-prednorte88"]
+      timeout: 5s
+      retries: 10
+volumes:
+  vol_reasignacion_data:
