@@ -1,28 +1,44 @@
 services:
+
   ms-usuarios:
-    build: ./ms-usuarios
+    build: ./Backend-usuarios
     container_name: cnt-ms-usuarios
     ports:
       - "8080:8081"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://cnt-db-rednorte:3306/db_usuarios
+      - SPRING_DATASOURCE_URL=jdbc:mysql://cnt-db-rednorte:3306/db_usuarios?createDatabaseIfNotExist=true
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=11223344
     depends_on:
       db-rednorte:
         condition: service_healthy
+
   ms-reasignacion:
-    build: ./ms-reasignacion
+    build: ./Backend_reasignacion
     container_name: cnt-ms-reasignacion
     ports:
       - "8082:8081"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://cnt-db-rednorte:3306/db_reasignacion
+      - SPRING_DATASOURCE_URL=jdbc:mysql://cnt-db-rednorte:3306/db_reasignacion?createDatabaseIfNotExist=true
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=11223344
     depends_on:
       db-rednorte:
         condition: service_healthy
+
+  ms-consultas:
+    build: ./ms-consultas
+    container_name: cnt-ms-consultas
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://cnt-db-rednorte:3306/db_consultas?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=11223344
+    depends_on:
+      db-rednorte:
+        condition: service_healthy
+
   db-rednorte:
     image: mysql:8.4
     container_name: cnt-db-rednorte
@@ -31,11 +47,13 @@ services:
     ports:
       - "3307:3306"
     volumes:
-      - vol_usuarios_data:/var/lib/mysql
-      - ./init-db:/docker-entrypoint-initdb.d 
+      - vol_rednorte_data:/var/lib/mysql
+      - ./init-db:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p11223344"]
       interval: 10s
       retries: 5
+      timeout: 5s
+
 volumes:
-  vol_usuarios_data:
+  vol_rednorte_data:
