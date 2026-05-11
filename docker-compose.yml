@@ -1,5 +1,4 @@
 services:
-
   ms-usuarios:
     build: ./Backend-usuarios
     container_name: cnt-ms-usuarios
@@ -12,7 +11,6 @@ services:
     depends_on:
       db-rednorte:
         condition: service_healthy
-
   ms-reasignacion:
     build: ./Backend_reasignacion
     container_name: cnt-ms-reasignacion
@@ -25,7 +23,6 @@ services:
     depends_on:
       db-rednorte:
         condition: service_healthy
-
   ms-consultas:
     build: ./ms-consultas
     container_name: cnt-ms-consultas
@@ -38,7 +35,18 @@ services:
     depends_on:
       db-rednorte:
         condition: service_healthy
-
+  ms-ficha-medica:
+    build: ./ms-ficha-medica
+    container_name: cnt-ms-ficha-medica
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://cnt-db-rednorte:3306/db_ficha?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=11223344
+    depends_on:
+      db-rednorte:
+        condition: service_healthy
   db-rednorte:
     image: mysql:8.4
     container_name: cnt-db-rednorte
@@ -54,6 +62,5 @@ services:
       interval: 10s
       retries: 5
       timeout: 5s
-
 volumes:
   vol_rednorte_data:
