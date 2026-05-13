@@ -19,6 +19,15 @@ services:
       eureka-server:
         condition: service_healthy
 
+  ms-bff:
+    build: ./ms-bff
+    container_name: cnt-ms-bff
+    ports:
+      - "8091:8091"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
   ms-usuarios:
     build: ./Backend-usuarios
     container_name: cnt-ms-usuarios
