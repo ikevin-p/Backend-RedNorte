@@ -1,0 +1,106 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:3000"
+              - "http://localhost:3001"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+
+      routes:
+        # ms-usuarios
+        - id: ms-usuarios
+          uri: http://cnt-ms-usuarios:8081
+          predicates:
+            - Path=/usuarios/**, /roles/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: ms-usuarios-cb
+                fallbackUri: forward:/fallback/usuarios
+
+        # ms-consultas
+        - id: ms-consultas
+          uri: http://cnt-ms-consultas:8083
+          predicates:
+            - Path=/consultas/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: ms-consultas-cb
+                fallbackUri: forward:/fallback/consultas
+
+        # ms-reasignacion
+        - id: ms-reasignacion
+          uri: http://cnt-ms-reasignacion:8081
+          predicates:
+            - Path=/api/reasignacion/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: ms-reasignacion-cb
+                fallbackUri: forward:/fallback/reasignacion
+
+        # ms-ficha-medica
+        - id: ms-ficha-medica
+          uri: http://cnt-ms-ficha-medica:8084
+          predicates:
+            - Path=/ficha/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: ms-ficha-cb
+                fallbackUri: forward:/fallback/ficha
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://cnt-eureka-server:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: true
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      ms-usuarios-cb:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+      ms-consultas-cb:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+      ms-reasignacion-cb:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+      ms-ficha-cb:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    gateway:
+      enabled: true
