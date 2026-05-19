@@ -1,0 +1,17 @@
+/app/src/main/java/com/example/Backend_usuarios/BackendUsuariosApplication.java
+/app/src/main/java/com/example/Backend_usuarios/config/PasswordMigrationRunner.java
+/app/src/main/java/com/example/Backend_usuarios/config/SecurityConfig.java
+/app/src/main/java/com/example/Backend_usuarios/config/SwaggerConfig.java
+/app/src/main/java/com/example/Backend_usuarios/controller/RolController.java
+/app/src/main/java/com/example/Backend_usuarios/controller/UsuarioController.java
+/app/src/main/java/com/example/Backend_usuarios/dto/UsuarioRequestDTO.java
+/app/src/main/java/com/example/Backend_usuarios/dto/UsuarioResponseDTO.java
+/app/src/main/java/com/example/Backend_usuarios/model/Persona.java
+/app/src/main/java/com/example/Backend_usuarios/model/Rol.java
+/app/src/main/java/com/example/Backend_usuarios/model/Usuario.java
+/app/src/main/java/com/example/Backend_usuarios/repository/PersonaRepository.java
+/app/src/main/java/com/example/Backend_usuarios/repository/RolRepository.java
+/app/src/main/java/com/example/Backend_usuarios/repository/UsuarioRepository.java
+/app/src/main/java/com/example/Backend_usuarios/service/RolService.java
+/app/src/main/java/com/example/Backend_usuarios/service/UserDetailsServiceImpl.java
+/app/src/main/java/com/example/Backend_usuarios/service/UsuarioService.java
