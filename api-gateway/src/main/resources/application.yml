@@ -23,6 +23,20 @@ spring:
             allowCredentials: true
 
       routes:
+        # Eureka Dashboard via Gateway
+        - id: eureka-dashboard
+          uri: http://cnt-eureka-server:8761
+          predicates:
+            - Path=/eureka-ui/**
+          filters:
+            - RewritePath=/eureka-ui/(?<segment>.*), /${segment}
+
+        # Eureka recursos estáticos (CSS, JS, imágenes que carga el dashboard)
+        - id: eureka-static
+          uri: http://cnt-eureka-server:8761
+          predicates:
+            - Path=/css/**, /js/**, /fonts/**, /images/**
+
         # ms-usuarios
         - id: ms-usuarios
           uri: http://cnt-ms-usuarios:8081
@@ -67,6 +81,17 @@ spring:
                 name: ms-ficha-cb
                 fallbackUri: forward:/fallback/ficha
 
+        # ms-establecimientos
+        - id: ms-establecimientos
+          uri: http://cnt-ms-establecimientos:8093
+          predicates:
+            - Path=/establecimientos/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: ms-establecimientos-cb
+                fallbackUri: forward:/fallback/establecimientos
+
 eureka:
   client:
     service-url:
@@ -92,6 +117,10 @@ resilience4j:
         failure-rate-threshold: 50
         wait-duration-in-open-state: 10s
       ms-ficha-cb:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+      ms-establecimientos-cb:
         sliding-window-size: 10
         failure-rate-threshold: 50
         wait-duration-in-open-state: 10s

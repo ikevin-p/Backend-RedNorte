@@ -28,6 +28,32 @@ services:
       eureka-server:
         condition: service_healthy
 
+  ms-notificaciones:
+    build: ./ms-notificaciones
+    container_name: cnt-ms-notificaciones
+    ports:
+      - "8092:8092"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://cnt-db-rednorte:3306/db_notificaciones?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=11223344
+    depends_on:
+      db-rednorte:
+        condition: service_healthy
+
+  ms-establecimientos:
+    build: ./ms-establecimientos
+    container_name: cnt-ms-establecimientos
+    ports:
+      - "8093:8093"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://cnt-db-rednorte:3306/db_establecimientos?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=11223344
+    depends_on:
+      db-rednorte:
+        condition: service_healthy
+
   ms-usuarios:
     build: ./Backend-usuarios
     container_name: cnt-ms-usuarios
