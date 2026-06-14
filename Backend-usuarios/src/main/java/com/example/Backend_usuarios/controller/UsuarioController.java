@@ -3,6 +3,7 @@ package com.example.Backend_usuarios.controller;
 import com.example.Backend_usuarios.dto.UsuarioRequestDTO;
 import com.example.Backend_usuarios.dto.UsuarioResponseDTO;
 import com.example.Backend_usuarios.model.Usuario;
+import com.example.Backend_usuarios.security.JwtUtil;
 import com.example.Backend_usuarios.service.UsuarioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -17,13 +18,15 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/usuarios")
 @CrossOrigin(origins = "http://localhost:3000")
-@Tag(name = "Usuarios", description = "Gestión de usuarios del sistema RedNorte")
+@Tag(name = "Usuarios", description = "Gestion de usuarios del sistema RedNorte")
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
+    private final JwtUtil jwtUtil;
 
-    public UsuarioController(UsuarioService usuarioService) {
+    public UsuarioController(UsuarioService usuarioService, JwtUtil jwtUtil) {
         this.usuarioService = usuarioService;
+        this.jwtUtil = jwtUtil;
     }
 
     private UsuarioResponseDTO toDTO(Usuario usuario) {
@@ -67,14 +70,14 @@ public class UsuarioController {
     @Operation(summary = "Crear nuevo usuario")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Usuario creado correctamente"),
-        @ApiResponse(responseCode = "400", description = "Datos inválidos")
+        @ApiResponse(responseCode = "400", description = "Datos invalidos")
     })
     @PostMapping
     public void usuarioAlmacenar(@RequestBody Usuario usuario) {
         this.usuarioService.usuarioAlmacenar(usuario);
     }
 
-    @Operation(summary = "Login de usuario", description = "Autentica con mail y contraseña. Retorna datos del usuario si las credenciales son válidas.")
+    @Operation(summary = "Login de usuario", description = "Autentica con mail y contrasena. Retorna datos del usuario y un token JWT si las credenciales son validas.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Login exitoso"),
         @ApiResponse(responseCode = "401", description = "Credenciales incorrectas")
@@ -83,6 +86,12 @@ public class UsuarioController {
     public ResponseEntity<UsuarioResponseDTO> login(@RequestBody UsuarioRequestDTO u) {
         Usuario usuario = this.usuarioService.login(u.getMail(), u.getPass());
         if (usuario == null) return ResponseEntity.status(401).build();
-        return ResponseEntity.ok(toDTO(usuario));
+
+        UsuarioResponseDTO dto = toDTO(usuario);
+        String rolTag = usuario.getRol() != null ? usuario.getRol().getTag() : "PACIENTE";
+        String token = jwtUtil.generarToken(usuario.getMail(), rolTag, usuario.getId());
+        dto.setToken(token);
+
+        return ResponseEntity.ok(dto);
     }
 }

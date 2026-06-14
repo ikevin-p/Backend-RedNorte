@@ -5,6 +5,7 @@ public class UsuarioResponseDTO {
     private String mail;
     private String estado;
     private String fechaRegistro;
+    private String token;
     private RolDTO rol;
     private PersonaDTO persona;
 
@@ -48,6 +49,8 @@ public class UsuarioResponseDTO {
     public String getMail() { return mail; }
     public String getEstado() { return estado; }
     public String getFechaRegistro() { return fechaRegistro; }
+    public String getToken() { return token; }
+    public void setToken(String token) { this.token = token; }
     public RolDTO getRol() { return rol; }
     public PersonaDTO getPersona() { return persona; }
 }
