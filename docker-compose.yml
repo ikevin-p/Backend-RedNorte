@@ -54,13 +54,48 @@ services:
       db-rednorte:
         condition: service_healthy
 
+  ms-agenda-medica:
+    build: ./ms-agenda-medica
+    container_name: cnt-ms-agenda-medica
+    ports:
+      - "8094:8094"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://cnt-db-rednorte:3306/db_agenda?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=UTF-8
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=11223344
+    depends_on:
+      db-rednorte:
+        condition: service_healthy
+
+  ms-auditoria:
+    build: ./ms-auditoria
+    container_name: cnt-ms-auditoria
+    ports:
+      - "8096:8096"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://cnt-db-rednorte:3306/db_auditoria?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=UTF-8
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=11223344
+    depends_on:
+      db-rednorte:
+        condition: service_healthy
+
+  ms-estadisticas:
+    build: ./ms-estadisticas
+    container_name: cnt-ms-estadisticas
+    ports:
+      - "8095:8095"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
   ms-usuarios:
     build: ./Backend-usuarios
     container_name: cnt-ms-usuarios
     ports:
       - "8080:8081"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://cnt-db-rednorte:3306/db_usuarios?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_URL=jdbc:mysql://cnt-db-rednorte:3306/db_usuarios?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=UTF-8
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=11223344
     depends_on:
@@ -111,6 +146,7 @@ services:
     container_name: cnt-db-rednorte
     environment:
       - MYSQL_ROOT_PASSWORD=11223344
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     ports:
       - "3307:3306"
     volumes:

@@ -14,6 +14,9 @@ public class Persona {
     @Column(name = "p_id")
     private String id;
 
+    @Column(name = "p_nombre")
+    private String nombre;
+
     @Column(name = "p_rut")
     private String rut;
 
@@ -35,6 +38,7 @@ public class Persona {
 
     public Persona() {
         this.id = "";
+        this.nombre = "";
         this.rut = "";
         this.apellido1 = "";
         this.apellido2 = "";
@@ -48,6 +52,14 @@ public class Persona {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
     }
 
     public String getRut() {

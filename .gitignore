@@ -1,0 +1,29 @@
+# ─── Compilados Maven ──────────────────────────
+target/
+*.jar
+*.war
+*.class
+
+# ─── IDE ───────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+
+# ─── Logs ──────────────────────────────────────
+*.log
+logs/
+
+# ─── Sistema ───────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Maven wrapper (opcional, se conserva) ─────
+!.mvn/wrapper/maven-wrapper.jar
+
+# ─── Datos sensibles ───────────────────────────
+*.env
+application-local.properties

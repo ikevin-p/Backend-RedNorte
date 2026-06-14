@@ -7,21 +7,6 @@ spring:
 
   cloud:
     gateway:
-      globalcors:
-        cors-configurations:
-          '[/**]':
-            allowedOrigins:
-              - "http://localhost:3000"
-              - "http://localhost:3001"
-            allowedMethods:
-              - GET
-              - POST
-              - PUT
-              - DELETE
-              - OPTIONS
-            allowedHeaders: "*"
-            allowCredentials: true
-
       routes:
         # Eureka Dashboard via Gateway
         - id: eureka-dashboard
@@ -31,7 +16,7 @@ spring:
           filters:
             - RewritePath=/eureka-ui/(?<segment>.*), /${segment}
 
-        # Eureka recursos estáticos (CSS, JS, imágenes que carga el dashboard)
+        # Eureka recursos estáticos
         - id: eureka-static
           uri: http://cnt-eureka-server:8761
           predicates:
@@ -81,6 +66,17 @@ spring:
                 name: ms-ficha-cb
                 fallbackUri: forward:/fallback/ficha
 
+        # ms-notificaciones
+        - id: ms-notificaciones
+          uri: http://cnt-ms-notificaciones:8092
+          predicates:
+            - Path=/notificaciones/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: ms-notificaciones-cb
+                fallbackUri: forward:/fallback/notificaciones
+
         # ms-establecimientos
         - id: ms-establecimientos
           uri: http://cnt-ms-establecimientos:8093
@@ -91,6 +87,39 @@ spring:
               args:
                 name: ms-establecimientos-cb
                 fallbackUri: forward:/fallback/establecimientos
+
+        # ms-agenda-medica
+        - id: ms-agenda-medica
+          uri: http://cnt-ms-agenda-medica:8094
+          predicates:
+            - Path=/agenda/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: ms-agenda-cb
+                fallbackUri: forward:/fallback/agenda
+
+        # ms-estadisticas
+        - id: ms-estadisticas
+          uri: http://cnt-ms-estadisticas:8095
+          predicates:
+            - Path=/estadisticas/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: ms-estadisticas-cb
+                fallbackUri: forward:/fallback/estadisticas
+
+        # ms-auditoria
+        - id: ms-auditoria
+          uri: http://cnt-ms-auditoria:8096
+          predicates:
+            - Path=/auditoria/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: ms-auditoria-cb
+                fallbackUri: forward:/fallback/auditoria
 
 eureka:
   client:
@@ -120,7 +149,23 @@ resilience4j:
         sliding-window-size: 10
         failure-rate-threshold: 50
         wait-duration-in-open-state: 10s
+      ms-notificaciones-cb:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
       ms-establecimientos-cb:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+      ms-agenda-cb:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+      ms-estadisticas-cb:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+      ms-auditoria-cb:
         sliding-window-size: 10
         failure-rate-threshold: 50
         wait-duration-in-open-state: 10s
