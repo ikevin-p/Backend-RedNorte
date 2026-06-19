@@ -1,59 +1,55 @@
-package com.example.Backend_usuarios.config;
+package com.rednorte.msficha.security;
 
-import com.example.Backend_usuarios.security.JwtAuthFilter;
-import com.example.Backend_usuarios.service.UserDetailsServiceImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+/**
+ * Seguridad de ms-ficha-medica: exige JWT valido en todos los endpoints,
+ * salvo Swagger, actuator y preflight CORS. Las fichas medicas son
+ * informacion clinica sensible: no deben quedar accesibles sin token.
+ *
+ * El CORS lo maneja exclusivamente el API Gateway (globalcors); agregarlo
+ * tambien aqui duplicaria el header Access-Control-Allow-Origin.
+ *
+ * NOTA: esta clase fue borrada por error junto con la de ms-consultas y
+ * Backend_reasignacion durante una limpieza de archivos del frontend
+ * (un Remove-Item con llaves mal interpretadas por PowerShell tambien
+ * afecto este archivo). Sin SecurityFilterChain propio, Spring Boot
+ * aplica su configuracion default de Spring Security, que redirige a
+ * una pagina /login inexistente en vez de devolver 401 — esto causaba
+ * los errores "ERR_CONNECTION_TIMED_OUT a 172.x.x.x:8084/login" vistos
+ * en el frontend.
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private final UserDetailsServiceImpl userDetailsService;
     private final JwtAuthFilter jwtAuthFilter;
 
-    public SecurityConfig(UserDetailsServiceImpl userDetailsService, JwtAuthFilter jwtAuthFilter) {
-        this.userDetailsService = userDetailsService;
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
     }
 
-    // NOTA: el CORS lo maneja exclusivamente el API Gateway (globalcors en
-    // application.yml). Si este microservicio tambien agrega sus propios
-    // headers Access-Control-Allow-*, el navegador los recibe duplicados
-    // y bloquea la respuesta — es un problema conocido de Spring Cloud
-    // Gateway (DedupeResponseHeader no siempre lo corrige de forma fiable).
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Permitir TODAS las peticiones OPTIONS (preflight CORS del navegador)
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                // Endpoints publicos: login, registro, swagger
-                .requestMatchers("/usuarios/login").permitAll()
-                .requestMatchers(HttpMethod.POST, "/usuarios").permitAll()
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html",
                                  "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
-                // El resto requiere token JWT valido
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
     }
 }
