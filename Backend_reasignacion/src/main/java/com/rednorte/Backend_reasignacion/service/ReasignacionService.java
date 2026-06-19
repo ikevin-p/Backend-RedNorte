@@ -68,5 +68,34 @@ public class ReasignacionService {
 
         cancelacion.setProcesado(true);
         cancelacionRepository.save(cancelacion);
+
+        // Si la reasignacion fue exitosa, se notifica al paciente reasignado
+        // (usa el Factory Method de ms-notificaciones: ReasignacionCreator).
+        // Una falla al notificar no debe revertir la reasignacion misma —
+        // por eso se aisla en su propio try/catch.
+        if (exito) {
+            notificarPacienteReasignado(idNuevoPaciente, cancelacion, authHeader);
+        }
+    }
+
+    private void notificarPacienteReasignado(Long usuarioId, Cancelacion cancelacion, String authHeader) {
+        try {
+            String urlNotificacion = "http://cnt-ms-notificaciones:8092/notificaciones/reasignacion";
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            if (authHeader != null && !authHeader.isBlank()) {
+                headers.set("Authorization", authHeader);
+            }
+            java.util.Map<String, Object> body = java.util.Map.of(
+                    "usuarioId", String.valueOf(usuarioId),
+                    "consultaId", cancelacion.getId(),
+                    "especialidad", cancelacion.getBloque().getEspecialidadId()
+            );
+            restTemplate.exchange(urlNotificacion, HttpMethod.POST,
+                    new HttpEntity<>(body, headers), Void.class);
+        } catch (Exception e) {
+            // No se interrumpe la reasignacion si la notificacion falla;
+            // el paciente puede ver el cambio igual al refrescar su panel.
+        }
     }
 }

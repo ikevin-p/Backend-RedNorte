@@ -1,5 +1,8 @@
 package com.rednorte.notificaciones.service;
 
+import com.rednorte.notificaciones.factory.CambioEstadoConsultaCreator;
+import com.rednorte.notificaciones.factory.NotificacionCreator;
+import com.rednorte.notificaciones.factory.ReasignacionCreator;
 import com.rednorte.notificaciones.model.Notificacion;
 import com.rednorte.notificaciones.repository.NotificacionRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -8,9 +11,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,7 +29,12 @@ class NotificacionServiceTest {
     @Mock
     private NotificacionRepository repo;
 
-    @InjectMocks
+    // NotificacionService depende de una List<NotificacionCreator> que
+    // Spring inyecta automaticamente en produccion (uno por cada @Component
+    // que implemente la interfaz). En el test se construye manualmente con
+    // las implementaciones reales del paquete factory/, ya que son simples
+    // y deterministas: esto verifica la integracion real Service + Factory,
+    // no solo el Service de forma aislada.
     private NotificacionService service;
 
     private Notificacion notificacionMock;
@@ -35,6 +43,13 @@ class NotificacionServiceTest {
     void setUp() {
         notificacionMock = new Notificacion("USR001", "Titulo", "Mensaje", "INFO", 1L);
         notificacionMock.setId(1L);
+
+        service = new NotificacionService();
+        ReflectionTestUtils.setField(service, "repo", repo);
+        ReflectionTestUtils.setField(service, "creators", List.of(
+                new CambioEstadoConsultaCreator(),
+                new ReasignacionCreator()
+        ));
     }
 
     // ─── CREAR ───────────────────────────────────────────────────────────────
@@ -144,5 +159,34 @@ class NotificacionServiceTest {
         assertEquals("USR001", resultado.getUsuarioId());
         assertEquals(10L, resultado.getConsultaId());
         assertTrue(resultado.getMensaje().contains(estadoNuevo));
+    }
+
+    // ─── NOTIFICAR REASIGNACION (Factory Method) ────────────────────────────
+
+    @Test
+    @DisplayName("Notificar reasignacion construye notificacion de tipo SUCCESS via ReasignacionCreator")
+    void notificarReasignacion_construyeNotificacionExitosa() {
+        when(repo.save(any(Notificacion.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Notificacion resultado = service.notificarReasignacion("USR002", 20L, "cardiologia");
+
+        assertEquals("SUCCESS", resultado.getTipo());
+        assertEquals("USR002", resultado.getUsuarioId());
+        assertEquals(20L, resultado.getConsultaId());
+        assertTrue(resultado.getMensaje().contains("cardiologia"));
+    }
+
+    @Test
+    @DisplayName("Factory Method: si no hay creator registrado para el tipo de evento, lanza excepcion clara")
+    void factoryMethod_tipoEventoNoRegistrado_lanzaExcepcion() {
+        // Servicio con un solo creator registrado, simulando que falta
+        // el de reasignacion (caso de configuracion incompleta).
+        NotificacionService servicioIncompleto = new NotificacionService();
+        ReflectionTestUtils.setField(servicioIncompleto, "repo", repo);
+        ReflectionTestUtils.setField(servicioIncompleto, "creators",
+                List.<NotificacionCreator>of(new CambioEstadoConsultaCreator()));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> servicioIncompleto.notificarReasignacion("USR003", 30L, "pediatria"));
     }
 }

@@ -91,17 +91,31 @@ class ReasignacionServiceTest {
                 any(HttpEntity.class),
                 eq(Long.class)
         )).thenReturn(ResponseEntity.ok(123L));
+        // La notificacion al paciente reasignado es una llamada aparte
+        // (POST a ms-notificaciones); se simula sin importar el resultado.
+        when(restTemplate.exchange(
+                contains("/notificaciones/reasignacion"),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                eq(Void.class)
+        )).thenReturn(ResponseEntity.ok().build());
 
         service.ejecutarReasignacion(cancelacion, tokenSimulado);
 
-        // Verifica que el header Authorization fue efectivamente reenviado
+        // Verifica que el header Authorization fue reenviado en la
+        // llamada de busqueda del paciente prioritario
         ArgumentCaptor<HttpEntity> entityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
-        verify(restTemplate).exchange(anyString(), eq(HttpMethod.GET), entityCaptor.capture(), eq(Long.class));
+        verify(restTemplate).exchange(contains("/consultas/prioritario"), eq(HttpMethod.GET),
+                entityCaptor.capture(), eq(Long.class));
         assertEquals(tokenSimulado, entityCaptor.getValue().getHeaders().getFirst("Authorization"));
 
         assertTrue(cancelacion.getProcesado());
         verify(reasignacionRepository, times(1)).save(argThat(log -> Boolean.TRUE.equals(log.getExito())
                 && log.getPacienteIdNuevo().equals(123L)));
+
+        // Confirma que tambien se notifico al paciente reasignado
+        verify(restTemplate, times(1)).exchange(
+                contains("/notificaciones/reasignacion"), eq(HttpMethod.POST), any(HttpEntity.class), eq(Void.class));
     }
 
     @Test
@@ -126,11 +140,32 @@ class ReasignacionServiceTest {
         Cancelacion cancelacion = new Cancelacion(bloqueMock, LocalDateTime.now(), 3L, "motivo");
 
         when(restTemplate.exchange(
-                anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(Long.class)
+                contains("/consultas/prioritario"), eq(HttpMethod.GET), any(HttpEntity.class), eq(Long.class)
         )).thenReturn(ResponseEntity.ok(456L));
+        when(restTemplate.exchange(
+                contains("/notificaciones/reasignacion"), eq(HttpMethod.POST), any(HttpEntity.class), eq(Void.class)
+        )).thenReturn(ResponseEntity.ok().build());
 
         assertDoesNotThrow(() -> service.ejecutarReasignacion(cancelacion, null));
 
         verify(reasignacionRepository, times(1)).save(any());
+    }
+
+    @Test
+    @DisplayName("Si la notificacion al paciente falla, la reasignacion ya confirmada no se revierte")
+    void ejecutarReasignacion_fallaNotificacion_noRevierteReasignacion() {
+        Cancelacion cancelacion = new Cancelacion(bloqueMock, LocalDateTime.now(), 4L, "motivo");
+
+        when(restTemplate.exchange(
+                contains("/consultas/prioritario"), eq(HttpMethod.GET), any(HttpEntity.class), eq(Long.class)
+        )).thenReturn(ResponseEntity.ok(789L));
+        when(restTemplate.exchange(
+                contains("/notificaciones/reasignacion"), eq(HttpMethod.POST), any(HttpEntity.class), eq(Void.class)
+        )).thenThrow(new RuntimeException("ms-notificaciones no disponible"));
+
+        assertDoesNotThrow(() -> service.ejecutarReasignacion(cancelacion, "Bearer token"));
+
+        assertTrue(cancelacion.getProcesado());
+        verify(reasignacionRepository, times(1)).save(argThat(log -> Boolean.TRUE.equals(log.getExito())));
     }
 }

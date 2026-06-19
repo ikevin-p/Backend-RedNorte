@@ -33,6 +33,16 @@ public class NotificacionController {
         return ResponseEntity.ok(service.notificarCambioEstado(usuarioId, consultaId, estadoAntes, estadoDes));
     }
 
+    // Notificar a un paciente que fue reasignado automaticamente a un
+    // cupo liberado (llamado desde ms-reasignacion -> ReasignacionService).
+    @PostMapping("/reasignacion")
+    public ResponseEntity<Notificacion> reasignacion(@RequestBody Map<String, Object> body) {
+        String usuarioId    = (String) body.get("usuarioId");
+        Long consultaId     = Long.valueOf(body.get("consultaId").toString());
+        String especialidad = (String) body.get("especialidad");
+        return ResponseEntity.ok(service.notificarReasignacion(usuarioId, consultaId, especialidad));
+    }
+
     // Listar todas las notificaciones de un usuario
     @GetMapping("/usuario/{usuarioId}")
     public ResponseEntity<List<Notificacion>> listar(@PathVariable String usuarioId) {
