@@ -34,13 +34,21 @@ jobs:
           path: Backend-usuarios/target/surefire-reports/
           retention-days: 7
 
+      - name: Publicar reporte de cobertura JaCoCo
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-cobertura-ms-usuarios
+          path: Backend-usuarios/target/site/jacoco/
+          retention-days: 7
+
   test-microservicios:
-    name: Tests unitarios microservicios nuevos
+    name: Tests unitarios microservicios
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        ms: [ms-agenda-medica, ms-establecimientos, ms-auditoria]
+        ms: [ms-agenda-medica, ms-establecimientos, ms-auditoria, ms-consultas, ms-ficha-medica, Backend_reasignacion, ms-notificaciones, ms-bff, ms-estadisticas]
 
     steps:
       - name: Checkout del repositorio
@@ -63,6 +71,14 @@ jobs:
         with:
           name: reporte-tests-${{ matrix.ms }}
           path: ${{ matrix.ms }}/target/surefire-reports/
+          retention-days: 7
+
+      - name: Publicar reporte de cobertura JaCoCo
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-cobertura-${{ matrix.ms }}
+          path: ${{ matrix.ms }}/target/site/jacoco/
           retention-days: 7
 
   build-ms-usuarios:
