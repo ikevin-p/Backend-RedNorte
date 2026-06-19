@@ -3,6 +3,10 @@ package com.rednorte.Backend_reasignacion.service;
 import java.time.LocalDateTime;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -36,14 +40,22 @@ public class ReasignacionService {
     }
 
     @Transactional
-    public void ejecutarReasignacion(Cancelacion cancelacion) {
+    public void ejecutarReasignacion(Cancelacion cancelacion, String authHeader) {
         // CORRECCIÓN: apunta a ms-consultas (nuestro microservicio) en vez de ms-lista-espera
         String url = "http://cnt-ms-consultas:8083/consultas/prioritario/"
                 + cancelacion.getBloque().getEspecialidadId();
 
         Long idNuevoPaciente;
         try {
-            idNuevoPaciente = restTemplate.getForObject(url, Long.class);
+            // ms-consultas ahora exige JWT en todos sus endpoints: se reenvia
+            // el token del admin que disparo la reasignacion.
+            HttpHeaders headers = new HttpHeaders();
+            if (authHeader != null && !authHeader.isBlank()) {
+                headers.set("Authorization", authHeader);
+            }
+            ResponseEntity<Long> resp = restTemplate.exchange(
+                    url, HttpMethod.GET, new HttpEntity<>(headers), Long.class);
+            idNuevoPaciente = resp.getBody();
         } catch (Exception e) {
             idNuevoPaciente = null;
         }

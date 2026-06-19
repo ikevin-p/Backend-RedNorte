@@ -11,7 +11,9 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/estadisticas")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001"})
+// NOTA: el CORS lo maneja exclusivamente el API Gateway (globalcors).
+// @CrossOrigin aqui duplicaria el header Access-Control-Allow-Origin
+// y el navegador bloquearia la respuesta.
 @Tag(name = "Estadísticas", description = "Reportes y métricas del sistema RedNorte")
 public class EstadisticasController {
 
@@ -23,19 +25,22 @@ public class EstadisticasController {
 
     @GetMapping("/resumen")
     @Operation(summary = "Resumen general del sistema — totales y distribuciones de todos los módulos")
-    public ResponseEntity<EstadisticasDTO> resumen() {
-        return ResponseEntity.ok(service.obtenerResumen());
+    public ResponseEntity<EstadisticasDTO> resumen(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return ResponseEntity.ok(service.obtenerResumen(authHeader));
     }
 
     @GetMapping("/consultas")
     @Operation(summary = "Estadísticas de consultas médicas — por estado y por doctor")
-    public ResponseEntity<Map<String, Object>> consultas() {
-        return ResponseEntity.ok(service.estadisticasConsultas());
+    public ResponseEntity<Map<String, Object>> consultas(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return ResponseEntity.ok(service.estadisticasConsultas(authHeader));
     }
 
     @GetMapping("/agenda")
     @Operation(summary = "Estadísticas de agenda médica — bloques por estado y por doctor")
-    public ResponseEntity<Map<String, Object>> agenda() {
-        return ResponseEntity.ok(service.estadisticasAgenda());
+    public ResponseEntity<Map<String, Object>> agenda(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return ResponseEntity.ok(service.estadisticasAgenda(authHeader));
     }
 }

@@ -30,14 +30,28 @@ public class EstadisticasService {
         this.webClientBuilder = webClientBuilder;
     }
 
+    /**
+     * Adjunta el header Authorization (token JWT del usuario) a la peticion
+     * WebClient saliente. Necesario porque ms-consultas, ms-usuarios,
+     * ms-agenda-medica y ms-establecimientos ahora exigen autenticacion;
+     * sin esto, todas las llamadas fallarian con 401.
+     */
+    private WebClient.RequestHeadersSpec<?> conAuth(
+            WebClient.RequestHeadersSpec<?> spec, String authHeader) {
+        if (authHeader != null && !authHeader.isBlank()) {
+            return spec.header("Authorization", authHeader);
+        }
+        return spec;
+    }
+
     @SuppressWarnings("unchecked")
-    public EstadisticasDTO obtenerResumen() {
+    public EstadisticasDTO obtenerResumen(String authHeader) {
         EstadisticasDTO dto = new EstadisticasDTO();
 
         // Consultas
         try {
-            List<Map<String, Object>> consultas = webClientBuilder.build()
-                    .get().uri(consultasUrl + "/consultas")
+            List<Map<String, Object>> consultas = conAuth(
+                        webClientBuilder.build().get().uri(consultasUrl + "/consultas"), authHeader)
                     .retrieve().bodyToMono(List.class).block();
 
             if (consultas != null) {
@@ -62,8 +76,8 @@ public class EstadisticasService {
 
         // Usuarios
         try {
-            List<Map<String, Object>> usuarios = webClientBuilder.build()
-                    .get().uri(usuariosUrl + "/usuarios")
+            List<Map<String, Object>> usuarios = conAuth(
+                        webClientBuilder.build().get().uri(usuariosUrl + "/usuarios"), authHeader)
                     .retrieve().bodyToMono(List.class).block();
             if (usuarios != null) dto.setTotalUsuarios(usuarios.size());
         } catch (Exception e) {
@@ -72,8 +86,8 @@ public class EstadisticasService {
 
         // Agenda
         try {
-            List<Map<String, Object>> bloques = webClientBuilder.build()
-                    .get().uri(agendaUrl + "/agenda")
+            List<Map<String, Object>> bloques = conAuth(
+                        webClientBuilder.build().get().uri(agendaUrl + "/agenda"), authHeader)
                     .retrieve().bodyToMono(List.class).block();
 
             if (bloques != null) {
@@ -92,8 +106,8 @@ public class EstadisticasService {
 
         // Establecimientos
         try {
-            List<Map<String, Object>> establecimientos = webClientBuilder.build()
-                    .get().uri(establecimientosUrl + "/establecimientos")
+            List<Map<String, Object>> establecimientos = conAuth(
+                        webClientBuilder.build().get().uri(establecimientosUrl + "/establecimientos"), authHeader)
                     .retrieve().bodyToMono(List.class).block();
 
             if (establecimientos != null) {
@@ -114,11 +128,11 @@ public class EstadisticasService {
     }
 
     @SuppressWarnings("unchecked")
-    public Map<String, Object> estadisticasConsultas() {
+    public Map<String, Object> estadisticasConsultas(String authHeader) {
         Map<String, Object> resultado = new HashMap<>();
         try {
-            List<Map<String, Object>> consultas = webClientBuilder.build()
-                    .get().uri(consultasUrl + "/consultas")
+            List<Map<String, Object>> consultas = conAuth(
+                        webClientBuilder.build().get().uri(consultasUrl + "/consultas"), authHeader)
                     .retrieve().bodyToMono(List.class).block();
 
             if (consultas != null) {
@@ -143,11 +157,11 @@ public class EstadisticasService {
     }
 
     @SuppressWarnings("unchecked")
-    public Map<String, Object> estadisticasAgenda() {
+    public Map<String, Object> estadisticasAgenda(String authHeader) {
         Map<String, Object> resultado = new HashMap<>();
         try {
-            List<Map<String, Object>> bloques = webClientBuilder.build()
-                    .get().uri(agendaUrl + "/agenda")
+            List<Map<String, Object>> bloques = conAuth(
+                        webClientBuilder.build().get().uri(agendaUrl + "/agenda"), authHeader)
                     .retrieve().bodyToMono(List.class).block();
 
             if (bloques != null) {

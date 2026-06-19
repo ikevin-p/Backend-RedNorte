@@ -4,6 +4,8 @@ import com.rednorte.bff.dto.DashboardDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -24,14 +26,29 @@ public class BffService {
     @Value("${servicios.consultas}")
     private String urlConsultas;
 
-    public DashboardDTO obtenerDashboard() {
+    /**
+     * Construye los headers para las llamadas internas, reenviando el
+     * token JWT del usuario que llamo al BFF. ms-consultas y ms-usuarios
+     * ahora exigen autenticacion, por lo que sin esto las llamadas
+     * fallarian con 401 (y el dashboard mostraria ceros silenciosamente).
+     */
+    private HttpEntity<Void> conAuth(String authHeader) {
+        HttpHeaders headers = new HttpHeaders();
+        if (authHeader != null && !authHeader.isBlank()) {
+            headers.set("Authorization", authHeader);
+        }
+        return new HttpEntity<>(headers);
+    }
+
+    public DashboardDTO obtenerDashboard(String authHeader) {
         DashboardDTO dashboard = new DashboardDTO();
+        HttpEntity<Void> entity = conAuth(authHeader);
 
         try {
             // Obtener consultas
             ResponseEntity<List<Map>> consultasResp = restTemplate.exchange(
                 urlConsultas + "/consultas",
-                HttpMethod.GET, null,
+                HttpMethod.GET, entity,
                 new ParameterizedTypeReference<List<Map>>() {}
             );
             List<Map> consultas = consultasResp.getBody();
@@ -54,7 +71,7 @@ public class BffService {
             // Obtener usuarios
             ResponseEntity<List<Map>> usuariosResp = restTemplate.exchange(
                 urlUsuarios + "/usuarios",
-                HttpMethod.GET, null,
+                HttpMethod.GET, entity,
                 new ParameterizedTypeReference<List<Map>>() {}
             );
             List<Map> usuarios = usuariosResp.getBody();
@@ -78,11 +95,11 @@ public class BffService {
         return dashboard;
     }
 
-    public List<Map> obtenerConsultasPaciente(String usuarioId) {
+    public List<Map> obtenerConsultasPaciente(String usuarioId, String authHeader) {
         try {
             ResponseEntity<List<Map>> resp = restTemplate.exchange(
                 urlConsultas + "/consultas/usuario/" + usuarioId,
-                HttpMethod.GET, null,
+                HttpMethod.GET, conAuth(authHeader),
                 new ParameterizedTypeReference<List<Map>>() {}
             );
             return resp.getBody();

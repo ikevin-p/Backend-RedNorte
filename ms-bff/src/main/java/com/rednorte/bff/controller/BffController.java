@@ -11,22 +11,29 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/bff")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001"})
+// NOTA: el CORS lo maneja exclusivamente el API Gateway (globalcors).
+// @CrossOrigin aqui duplicaria el header Access-Control-Allow-Origin
+// y el navegador bloquearia la respuesta.
 public class BffController {
 
     @Autowired
     private BffService bffService;
 
     // Dashboard consolidado para el admin
+    // El token JWT del usuario se reenvia a los microservicios internos
+    // (ms-consultas, ms-usuarios), ya que ahora exigen autenticacion.
     @GetMapping("/dashboard")
-    public ResponseEntity<DashboardDTO> dashboard() {
-        return ResponseEntity.ok(bffService.obtenerDashboard());
+    public ResponseEntity<DashboardDTO> dashboard(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return ResponseEntity.ok(bffService.obtenerDashboard(authHeader));
     }
 
     // Consultas de un paciente especifico
     @GetMapping("/paciente/{usuarioId}/consultas")
-    public ResponseEntity<List<Map>> consultasPaciente(@PathVariable String usuarioId) {
-        return ResponseEntity.ok(bffService.obtenerConsultasPaciente(usuarioId));
+    public ResponseEntity<List<Map>> consultasPaciente(
+            @PathVariable String usuarioId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return ResponseEntity.ok(bffService.obtenerConsultasPaciente(usuarioId, authHeader));
     }
 
     // Health check del BFF
