@@ -3,6 +3,8 @@ package com.example.Backend_usuarios.model;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -25,7 +27,11 @@ public class Rol {
 
     @Column(name = "r_estado")
     private String estado;   
-    
+
+    // @JsonBackReference: este lado NO se serializa, corta el ciclo
+    // infinito Usuario -> Rol -> usuarios -> Rol -> ... (ver Usuario.java,
+    // que tiene @JsonManagedReference en su lado del rol).
+    @JsonBackReference
     @OneToMany(mappedBy = "rol")
     private List<Usuario> usuarios;
 

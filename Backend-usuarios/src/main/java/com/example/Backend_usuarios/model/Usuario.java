@@ -2,8 +2,11 @@ package com.example.Backend_usuarios.model;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -27,9 +30,15 @@ public class Usuario {
     @Column(name = "u_fecha_registro")
     private LocalDateTime fechaRegistro;
 
-    @OneToOne(mappedBy = "usuario")
+    // @JsonManagedReference: este lado SI se serializa normalmente.
+    // Corta el ciclo infinito Usuario -> Persona -> Usuario -> ...
+    // (causaba "Document nesting depth exceeds the maximum allowed" en
+    // GET /usuarios al listar todos los usuarios).
+    @JsonManagedReference
+    @OneToOne(mappedBy = "usuario", fetch = FetchType.LAZY)
     private Persona persona;
 
+    @JsonManagedReference
     @ManyToOne
     @JoinColumn(name = "u_rol_id")
     private Rol rol;
