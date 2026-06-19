@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/ficha")
-@CrossOrigin(origins = "http://localhost:3000")
+// NOTA: el CORS lo maneja exclusivamente el API Gateway (globalcors).
 public class FichaMedicaController {
 
     @Autowired

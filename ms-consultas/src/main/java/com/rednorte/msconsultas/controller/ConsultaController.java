@@ -31,7 +31,7 @@ import com.rednorte.msconsultas.service.ConsultaService;
 
 @RestController
 @RequestMapping("/consultas")
-@CrossOrigin
+// NOTA: el CORS lo maneja exclusivamente el API Gateway (globalcors).
 public class ConsultaController {
 
     @Autowired

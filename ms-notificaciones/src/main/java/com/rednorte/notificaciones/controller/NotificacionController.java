@@ -11,7 +11,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/notificaciones")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001"})
+// NOTA: el CORS lo maneja exclusivamente el API Gateway (globalcors).
 public class NotificacionController {
 
     @Autowired

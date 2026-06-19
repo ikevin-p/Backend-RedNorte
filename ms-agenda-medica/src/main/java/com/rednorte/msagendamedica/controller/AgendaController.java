@@ -14,7 +14,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/agenda")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001"})
+// NOTA: el CORS lo maneja exclusivamente el API Gateway (globalcors).
 @Tag(name = "Agenda Médica", description = "Gestión de bloques horarios para doctores")
 public class AgendaController {
 

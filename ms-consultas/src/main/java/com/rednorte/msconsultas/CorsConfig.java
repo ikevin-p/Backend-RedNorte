@@ -1,22 +1,18 @@
 package com.rednorte.msconsultas;
 
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-
-@Configuration
+/**
+ * DESACTIVADO: el CORS lo maneja exclusivamente el API Gateway
+ * (globalcors en application.yml de api-gateway).
+ *
+ * Si este WebMvcConfigurer tambien agrega headers Access-Control-Allow-*,
+ * el navegador los recibe duplicados (uno del Gateway, otro de aqui) y
+ * bloquea la respuesta con el error:
+ * "The 'Access-Control-Allow-Origin' header contains multiple values"
+ *
+ * Se deja la clase sin @Configuration para que Spring no la registre,
+ * en vez de borrar el archivo, por si se necesita reactivar en el futuro
+ * (por ejemplo si este microservicio alguna vez se expone sin Gateway).
+ */
 public class CorsConfig {
-    @Bean
-    public WebMvcConfigurer corsConfigurer() {
-        return new WebMvcConfigurer() {
-            @Override
-            public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/**")
-                        .allowedOrigins("http://localhost:3000")
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                        .allowedHeaders("*");
-            }
-        };
-    }
+    // Bean deshabilitado intencionalmente.
 }

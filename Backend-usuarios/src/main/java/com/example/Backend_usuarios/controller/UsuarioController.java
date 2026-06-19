@@ -17,7 +17,8 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/usuarios")
-@CrossOrigin(origins = "http://localhost:3000")
+// NOTA: el CORS lo maneja exclusivamente el API Gateway (globalcors).
+// @CrossOrigin aqui duplica el header Access-Control-Allow-Origin.
 @Tag(name = "Usuarios", description = "Gestion de usuarios del sistema RedNorte")
 public class UsuarioController {
 

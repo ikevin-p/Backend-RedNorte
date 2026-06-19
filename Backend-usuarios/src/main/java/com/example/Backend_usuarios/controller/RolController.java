@@ -17,7 +17,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/roles")
-@CrossOrigin
+// NOTA: el CORS lo maneja exclusivamente el API Gateway (globalcors).
 @Tag(name = "Roles", description = "Gestión de roles del sistema RedNorte")
 public class RolController {
     @Autowired

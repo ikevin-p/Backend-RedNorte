@@ -13,7 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/auditoria")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001"})
+// NOTA: el CORS lo maneja exclusivamente el API Gateway (globalcors).
 @Tag(name = "Auditoría", description = "Trazabilidad de acciones del sistema")
 public class AuditoriaController {
 
