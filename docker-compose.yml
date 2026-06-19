@@ -114,6 +114,8 @@ services:
     depends_on:
       db-rednorte:
         condition: service_healthy
+      eureka-server:
+        condition: service_healthy
 
   ms-consultas:
     build: ./ms-consultas
@@ -127,6 +129,8 @@ services:
     depends_on:
       db-rednorte:
         condition: service_healthy
+      eureka-server:
+        condition: service_healthy
 
   ms-ficha-medica:
     build: ./ms-ficha-medica
@@ -139,6 +143,8 @@ services:
       - SPRING_DATASOURCE_PASSWORD=11223344
     depends_on:
       db-rednorte:
+        condition: service_healthy
+      eureka-server:
         condition: service_healthy
 
   db-rednorte:
