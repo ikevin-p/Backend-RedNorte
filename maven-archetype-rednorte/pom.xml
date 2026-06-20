@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.rednorte</groupId>
+  <artifactId>rednorte-microservicio-archetype</artifactId>
+  <version>1.0.0</version>
+  <packaging>maven-archetype</packaging>
+
+  <name>RedNorte — Arquetipo de Microservicio</name>
+  <description>
+    Arquetipo Maven personalizado del equipo RedNorte. Genera la estructura
+    base de un nuevo microservicio Spring Boot ya configurado con:
+    Eureka client, Spring Security + JWT (validacion liviana, sin generar
+    tokens), Swagger/OpenAPI, JaCoCo, y la separacion de capas
+    (controller/service/repository/model) usada en el resto del proyecto.
+
+    Basado en la estructura real de ms-agenda-medica, uno de los
+    microservicios mas simples y completos del sistema, para que el
+    arquetipo refleje patrones que ya estan probados en produccion.
+  </description>
+
+  <build>
+    <extensions>
+      <extension>
+        <groupId>org.apache.maven.archetype</groupId>
+        <artifactId>archetype-packaging</artifactId>
+        <version>3.4.1</version>
+      </extension>
+    </extensions>
+  </build>
+
+  <developers>
+    <developer>
+      <name>Kevin Joan Michel Pinochet Requena</name>
+      <organization>RedNorte — Clínica Digital</organization>
+    </developer>
+    <developer>
+      <name>Taylor Andrey Medolphe Forero</name>
+      <organization>RedNorte — Clínica Digital</organization>
+    </developer>
+  </developers>
+
+  <licenses>
+    <license>
+      <name>Uso académico — DSY1106 Desarrollo Fullstack III</name>
+    </license>
+  </licenses>
+</project>
