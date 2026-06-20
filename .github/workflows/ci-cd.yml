@@ -48,7 +48,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ms: [ms-agenda-medica, ms-establecimientos, ms-auditoria, ms-consultas, ms-ficha-medica, Backend_reasignacion, ms-notificaciones, ms-bff, ms-estadisticas]
+        ms: [ms-agenda-medica, ms-establecimientos, ms-auditoria, ms-consultas, ms-ficha-medica, Backend_reasignacion, ms-notificaciones, ms-bff, ms-estadisticas, ms-chatbot]
 
     steps:
       - name: Checkout del repositorio
