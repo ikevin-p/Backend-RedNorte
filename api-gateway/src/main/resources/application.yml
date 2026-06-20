@@ -139,6 +139,22 @@ spring:
                 name: ms-auditoria-cb
                 fallbackUri: forward:/fallback/auditoria
 
+        # ms-chatbot (registrado en Eureka — enrutado vía Service Discovery)
+        # Timeout mas generoso que el resto de rutas: generar texto con
+        # Ollama puede tardar mucho mas que una consulta CRUD normal.
+        - id: ms-chatbot
+          uri: lb://ms-chatbot
+          predicates:
+            - Path=/chatbot/**
+          metadata:
+            response-timeout: 60000
+            connect-timeout: 5000
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: ms-chatbot-cb
+                fallbackUri: forward:/fallback/chatbot
+
 eureka:
   client:
     service-url:
@@ -187,6 +203,13 @@ resilience4j:
         sliding-window-size: 10
         failure-rate-threshold: 50
         wait-duration-in-open-state: 10s
+      # Generar texto con Ollama puede tardar varios segundos (mas que
+      # cualquier otra consulta CRUD del sistema), asi que se tolera mas
+      # tiempo antes de considerar la llamada fallida.
+      ms-chatbot-cb:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 15s
 
 management:
   endpoints:

@@ -51,4 +51,15 @@ public class FallbackController {
                 "servicio", "ms-ficha-medica"
             ));
     }
+
+    @GetMapping("/chatbot")
+    public ResponseEntity<Map<String, String>> chatbotFallback() {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+            .body(Map.of(
+                "error", "SaludBot no disponible",
+                "mensaje", "SaludBot no esta disponible en este momento (puede que Ollama no este corriendo). " +
+                        "Puedes agendar tu cita directamente desde la sección Agendar Cita, o intentar de nuevo en unos minutos.",
+                "servicio", "ms-chatbot"
+            ));
+    }
 }
