@@ -59,7 +59,10 @@ class EstadisticasServiceTest {
         when(webClientBuilder.build()).thenReturn(webClient);
         when(webClient.get()).thenReturn(requestHeadersUriSpec);
         when(requestHeadersUriSpec.uri(anyString())).thenReturn(requestHeadersSpec);
-        when(requestHeadersSpec.header(anyString(), anyString())).thenReturn(requestHeadersSpec);
+        // lenient(): el test "sinToken" verifica explicitamente que header() NUNCA
+        // se invoque, asi que este stub queda sin uso en ese caso puntual. Sin
+        // lenient(), Mockito (modo estricto por defecto) lo marca como error.
+        lenient().when(requestHeadersSpec.header(anyString(), anyString())).thenReturn(requestHeadersSpec);
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
     }
 
