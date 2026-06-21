@@ -247,6 +247,75 @@ class ChatbotServiceTest {
                 .verifyComplete();
     }
 
+    @Test
+    @DisplayName("BUG REAL: si el modelo alucina un tool_call inventado como texto JSON crudo, se sanea en vez de mostrarlo al paciente")
+    void procesarMensaje_modeloAlucinaToolCallComoTexto_sePreservaSanitizado() {
+        // Reproduce exactamente el caso real detectado: el paciente pide
+        // ayuda para registrarse y el modelo, en vez de usar tool_calls
+        // estructurado o texto en espanol, devuelve un JSON inventado
+        // como contenido de texto plano: {"name": "crear_cuenta", ...}
+        when(repository.findByIdentificadorConversacionOrderByFechaHoraAsc("conv-8")).thenReturn(List.of());
+        when(ollamaService.chat(anyList(), anyList())).thenReturn(Mono.just(
+                respuestaTexto("{\"name\": \"crear_cuenta\", \"parameters\": {\"username\": \"\", \"password\": \"\"}}")));
+
+        MensajeRequestDTO dto = new MensajeRequestDTO();
+        dto.setMensaje("ayudame a registrarme");
+        dto.setIdentificadorConversacion("conv-8");
+        dto.setUsuarioId(null);
+
+        StepVerifier.create(chatbotService.procesarMensaje(dto))
+                .assertNext(resp -> {
+                    org.junit.jupiter.api.Assertions.assertFalse(resp.getRespuesta().contains("\"name\""));
+                    org.junit.jupiter.api.Assertions.assertFalse(resp.getRespuesta().contains("\"parameters\""));
+                    org.junit.jupiter.api.Assertions.assertTrue(resp.getRespuesta().contains("¿Podrías"));
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    @DisplayName("iniciar_flujo_ui con tipo REGISTRO marca accionRealizada=REDIRIGIR_REGISTRO")
+    void procesarMensaje_iniciarFlujoUiRegistro_marcaRedirigirRegistro() {
+        when(repository.findByIdentificadorConversacionOrderByFechaHoraAsc("conv-9")).thenReturn(List.of());
+
+        when(ollamaService.chat(anyList(), anyList()))
+                .thenReturn(Mono.just(respuestaConToolCall("iniciar_flujo_ui", Map.of("tipo", "REGISTRO"))))
+                .thenReturn(Mono.just(respuestaTexto("¡Claro! Te abrí el formulario de registro.")));
+
+        when(herramientas.ejecutar(eq("iniciar_flujo_ui"), any(), isNull(), any()))
+                .thenReturn(Mono.just("{\"exito\": true, \"tipoFormulario\": \"REGISTRO\"}"));
+
+        MensajeRequestDTO dto = new MensajeRequestDTO();
+        dto.setMensaje("ayudame a registrarme");
+        dto.setIdentificadorConversacion("conv-9");
+        dto.setUsuarioId(null);
+
+        StepVerifier.create(chatbotService.procesarMensaje(dto))
+                .assertNext(resp -> org.junit.jupiter.api.Assertions.assertEquals("REDIRIGIR_REGISTRO", resp.getAccionRealizada()))
+                .verifyComplete();
+    }
+
+    @Test
+    @DisplayName("iniciar_flujo_ui con tipo LOGIN marca accionRealizada=REDIRIGIR_LOGIN")
+    void procesarMensaje_iniciarFlujoUiLogin_marcaRedirigirLogin() {
+        when(repository.findByIdentificadorConversacionOrderByFechaHoraAsc("conv-10")).thenReturn(List.of());
+
+        when(ollamaService.chat(anyList(), anyList()))
+                .thenReturn(Mono.just(respuestaConToolCall("iniciar_flujo_ui", Map.of("tipo", "LOGIN"))))
+                .thenReturn(Mono.just(respuestaTexto("Te abrí el formulario de inicio de sesión.")));
+
+        when(herramientas.ejecutar(eq("iniciar_flujo_ui"), any(), any(), any()))
+                .thenReturn(Mono.just("{\"exito\": true, \"tipoFormulario\": \"LOGIN\"}"));
+
+        MensajeRequestDTO dto = new MensajeRequestDTO();
+        dto.setMensaje("no puedo entrar a mi cuenta");
+        dto.setIdentificadorConversacion("conv-10");
+        dto.setUsuarioId(null);
+
+        StepVerifier.create(chatbotService.procesarMensaje(dto))
+                .assertNext(resp -> org.junit.jupiter.api.Assertions.assertEquals("REDIRIGIR_LOGIN", resp.getAccionRealizada()))
+                .verifyComplete();
+    }
+
     private MensajeChatbot mensajeGuardado(String rol, String contenido) {
         var m = new MensajeChatbot();
         m.setRol(rol);

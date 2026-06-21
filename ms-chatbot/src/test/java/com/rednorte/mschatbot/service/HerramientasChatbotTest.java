@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -59,12 +58,13 @@ class HerramientasChatbotTest {
     }
 
     @Test
-    @DisplayName("definiciones() retorna exactamente las 2 herramientas con sus nombres correctos")
-    void definiciones_retornaLasDosHerramientas() {
+    @DisplayName("definiciones() retorna exactamente las 3 herramientas con sus nombres correctos")
+    void definiciones_retornaLasTresHerramientas() {
         var tools = herramientas.definiciones();
-        assertEquals(2, tools.size());
+        assertEquals(3, tools.size());
         assertEquals("buscar_horarios_disponibles", tools.get(0).getFunction().getName());
         assertEquals("crear_cita_real", tools.get(1).getFunction().getName());
+        assertEquals("iniciar_flujo_ui", tools.get(2).getFunction().getName());
     }
 
     @Test
@@ -151,6 +151,37 @@ class HerramientasChatbotTest {
         assertNotNull(resultado);
         assertTrue(resultado.contains("\"exito\": false"));
         assertTrue(resultado.contains("ya fue tomado"));
+    }
+
+    @Test
+    @DisplayName("iniciar_flujo_ui con tipo REGISTRO retorna exito y el tipo de formulario correcto")
+    void ejecutar_iniciarFlujoUi_registro_retornaTipoFormularioRegistro() {
+        String resultado = herramientas.ejecutar("iniciar_flujo_ui", Map.of("tipo", "REGISTRO"), null, null)
+                .block();
+
+        assertNotNull(resultado);
+        assertTrue(resultado.contains("\"exito\": true"));
+        assertTrue(resultado.contains("\"tipoFormulario\": \"REGISTRO\""));
+    }
+
+    @Test
+    @DisplayName("iniciar_flujo_ui con tipo LOGIN retorna el tipo de formulario correcto")
+    void ejecutar_iniciarFlujoUi_login_retornaTipoFormularioLogin() {
+        String resultado = herramientas.ejecutar("iniciar_flujo_ui", Map.of("tipo", "LOGIN"), "USR010", "Juan")
+                .block();
+
+        assertNotNull(resultado);
+        assertTrue(resultado.contains("\"tipoFormulario\": \"LOGIN\""));
+    }
+
+    @Test
+    @DisplayName("iniciar_flujo_ui con un tipo invalido cae por defecto a REGISTRO")
+    void ejecutar_iniciarFlujoUi_tipoInvalido_caePorDefectoARegistro() {
+        String resultado = herramientas.ejecutar("iniciar_flujo_ui", Map.of("tipo", "ALGO_RARO"), null, null)
+                .block();
+
+        assertNotNull(resultado);
+        assertTrue(resultado.contains("\"tipoFormulario\": \"REGISTRO\""));
     }
 
     @Test

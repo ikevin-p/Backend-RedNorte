@@ -56,6 +56,13 @@ public class ChatbotService {
             ayudar a los pacientes a resolver dudas administrativas y, sobre todo, \
             agendar citas médicas de la manera más rápida y sencilla posible.
 
+            HERRAMIENTAS DISPONIBLES (son las ÚNICAS que existen; nunca inventes \
+            el nombre de una herramienta distinta ni muestres JSON crudo en tu \
+            respuesta de texto, eso confunde al paciente):
+            - buscar_horarios_disponibles
+            - crear_cita_real
+            - iniciar_flujo_ui
+
             REGLAS ESTRICTAS:
             1. NO puedes diagnosticar enfermedades, recetar medicamentos ni dar \
             consejos médicos bajo ninguna circunstancia. Si un paciente describe \
@@ -72,15 +79,16 @@ public class ChatbotService {
             4. Si te hacen una pregunta fuera del ámbito de la clínica, redirige \
             amablemente la conversación hacia los servicios médicos o el \
             agendamiento de citas.
-            5. Si la persona NO tiene una cuenta (esto se te informará en el \
-            contexto del sistema) y quiere agendar una cita, explícale con calidez \
-            que primero necesita crear una cuenta gratuita, e indícale que puede \
-            hacerlo en la página de Registro del sitio. No intentes registrar a \
-            nadie tú mismo ni le pidas su contraseña.
-            6. Si la persona menciona que no puede iniciar sesión, que olvidó su \
-            contraseña o tiene problemas para entrar a su cuenta, oriéntala a usar \
-            la página de Inicio de Sesión y, si el problema persiste, a contactar \
-            al soporte de la clínica. Nunca le pidas ni confirmes contraseñas por chat.
+            5. Si el paciente pide ayuda para registrarse, crear una cuenta, o si \
+            un visitante sin cuenta confirma que quiere agendar una cita, usa \
+            INMEDIATAMENTE la herramienta iniciar_flujo_ui con tipo=REGISTRO. \
+            Nunca le pidas el nombre de usuario o contraseña por el chat ni \
+            intentes registrar a nadie tú mismo: esa herramienta abre un \
+            formulario seguro para que lo complete por su cuenta.
+            6. Si el paciente menciona que no puede iniciar sesión, que olvidó su \
+            contraseña o tiene problemas para entrar a su cuenta, usa la \
+            herramienta iniciar_flujo_ui con tipo=LOGIN. Nunca le pidas ni \
+            confirmes contraseñas por chat.
             """;
 
     public Mono<MensajeResponseDTO> procesarMensaje(MensajeRequestDTO dto) {
@@ -180,15 +188,36 @@ public class ChatbotService {
 
     private Mono<MensajeResponseDTO> finalizarConRespuestaTexto(String texto, MensajeRequestDTO dto,
                                                                   boolean esPrimerTurno, boolean huboErrorHerramienta) {
-        String respuestaFinal = (texto == null || texto.isBlank())
-                ? "Disculpa, no pude procesar tu mensaje. ¿Puedes reformularlo?"
-                : texto;
+        String respuestaFinal = sanearRespuestaDelModelo(texto);
         guardarMensaje(dto.getIdentificadorConversacion(), dto.getUsuarioId(), "assistant", respuestaFinal);
 
         String emocion = detectorEmocion.detectar(dto.getMensaje(), respuestaFinal, esPrimerTurno, huboErrorHerramienta);
         MensajeResponseDTO respuesta = new MensajeResponseDTO(respuestaFinal, null, null);
         respuesta.setEmocion(emocion);
         return Mono.just(respuesta);
+    }
+
+    /**
+     * Modelos pequenos como llama3.2:3b a veces "alucinan" un tool call
+     * inventado (con un nombre de herramienta que no existe) y lo
+     * escriben como texto plano dentro de content en vez de usar el
+     * campo estructurado tool_calls. Sin esta proteccion, el paciente
+     * veria literalmente un JSON crudo en el chat (bug real detectado:
+     * {"name": "crear_cuenta", "parameters": {...}}). Se detecta ese
+     * patron y se reemplaza por un mensaje de respaldo en espanol.
+     */
+    private String sanearRespuestaDelModelo(String texto) {
+        if (texto == null || texto.isBlank()) {
+            return "Disculpa, no pude procesar tu mensaje. ¿Puedes reformularlo?";
+        }
+        String recortado = texto.trim();
+        boolean pareceJsonDeHerramienta = (recortado.startsWith("{") || recortado.startsWith("["))
+                && (recortado.contains("\"name\"") || recortado.contains("\"parameters\"") || recortado.contains("\"function\""));
+        if (pareceJsonDeHerramienta) {
+            return "Disculpa, tuve un problema interno al procesar tu solicitud. " +
+                    "¿Podrías contarme de nuevo qué necesitas? Por ejemplo, si quieres crear una cuenta o agendar una cita.";
+        }
+        return texto;
     }
 
     /** Inspecciona el resultado de una herramienta para marcar acciones especiales para la UI. */
@@ -202,6 +231,11 @@ public class ChatbotService {
                 if (nodo.path("exito").asBoolean(false)) {
                     return new MensajeResponseDTO(null, "CITA_AGENDADA", nodo);
                 }
+            }
+            if ("iniciar_flujo_ui".equals(nombreHerramienta) && nodo.path("exito").asBoolean(false)) {
+                String tipoFormulario = nodo.path("tipoFormulario").asText("REGISTRO");
+                String accion = "LOGIN".equals(tipoFormulario) ? "REDIRIGIR_LOGIN" : "REDIRIGIR_REGISTRO";
+                return new MensajeResponseDTO(null, accion, null);
             }
         } catch (Exception ignored) {
             // Si el JSON no se puede parsear, simplemente no se marca ninguna accion especial.

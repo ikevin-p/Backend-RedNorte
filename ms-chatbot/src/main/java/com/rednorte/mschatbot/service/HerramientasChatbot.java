@@ -74,6 +74,25 @@ public class HerramientasChatbot {
                                 ),
                                 "required", List.of("bloqueId", "nombrePaciente", "rut", "motivoConsulta")
                         )
+                )),
+                new OllamaTool(new OllamaTool.Funcion(
+                        "iniciar_flujo_ui",
+                        "Abre un formulario emergente en la interfaz para que el paciente complete una accion por su cuenta " +
+                        "(NUNCA se le pide la contraseña por chat). Usar esta herramienta INMEDIATAMENTE cuando el paciente " +
+                        "pida ayuda para registrarse, crear una cuenta, iniciar sesion, o cuando un visitante sin cuenta " +
+                        "confirme que quiere agendar una cita. No existe ninguna otra forma de crear cuentas o iniciar " +
+                        "sesion: nunca inventes otra herramienta para esto.",
+                        Map.of(
+                                "type", "object",
+                                "properties", Map.of(
+                                        "tipo", Map.of(
+                                                "type", "string",
+                                                "enum", List.of("REGISTRO", "LOGIN"),
+                                                "description", "REGISTRO si el paciente quiere crear una cuenta nueva, LOGIN si ya tiene cuenta pero no puede ingresar"
+                                        )
+                                ),
+                                "required", List.of("tipo")
+                        )
                 ))
         );
     }
@@ -84,8 +103,21 @@ public class HerramientasChatbot {
         return switch (nombreHerramienta) {
             case "buscar_horarios_disponibles" -> buscarHorariosDisponibles((String) argumentos.get("fecha"));
             case "crear_cita_real" -> crearCitaReal(argumentos, usuarioId, nombrePacienteSesion);
+            case "iniciar_flujo_ui" -> iniciarFlujoUi(argumentos);
             default -> Mono.just(error("Herramienta desconocida: " + nombreHerramienta));
         };
+    }
+
+    /**
+     * No llama a ningun microservicio: solo confirma la intencion para
+     * que ChatbotService la traduzca en una accion que el frontend
+     * interprete (abrir el modal de registro o de login). El paciente
+     * completa sus datos en ese formulario, nunca dentro del chat.
+     */
+    private Mono<String> iniciarFlujoUi(Map<String, Object> argumentos) {
+        String tipo = String.valueOf(argumentos.getOrDefault("tipo", "REGISTRO")).toUpperCase();
+        if (!tipo.equals("REGISTRO") && !tipo.equals("LOGIN")) tipo = "REGISTRO";
+        return Mono.just("{\"exito\": true, \"tipoFormulario\": \"" + tipo + "\"}");
     }
 
     private Mono<String> buscarHorariosDisponibles(String fechaStr) {
