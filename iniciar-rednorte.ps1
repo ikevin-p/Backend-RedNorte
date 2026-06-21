@@ -25,7 +25,7 @@ Write-Host "=============================================" -ForegroundColor Mage
 Write-Host ""
 
 # ─── PASO 1: Verificar Docker Desktop ───────────────────────
-Write-Host "[1/6] Verificando Docker Desktop..." -ForegroundColor Cyan
+Write-Host "[1/7] Verificando Docker Desktop..." -ForegroundColor Cyan
 $dockerOk = $false
 try {
     docker info 2>&1 | Out-Null
@@ -54,7 +54,7 @@ Write-Host "      [OK] Docker esta corriendo" -ForegroundColor Green
 Write-Host ""
 
 # ─── PASO 2: Levantar contenedores ──────────────────────────
-Write-Host "[2/6] Levantando los 12 microservicios (docker compose)..." -ForegroundColor Cyan
+Write-Host "[2/7] Levantando los 13 microservicios (docker compose)..." -ForegroundColor Cyan
 Set-Location $BACKEND_PATH
 docker compose down 2>&1 | Out-Null
 docker compose up --build -d
@@ -67,7 +67,7 @@ Write-Host "      [OK] Contenedores construidos e iniciados" -ForegroundColor Gr
 Write-Host ""
 
 # ─── PASO 3: Esperar a que la base de datos este lista ──────
-Write-Host "[3/6] Esperando a que MySQL este disponible..." -ForegroundColor Cyan
+Write-Host "[3/7] Esperando a que MySQL este disponible..." -ForegroundColor Cyan
 $dbLista = $false
 $intentos = 0
 while ($intentos -lt 30) {
@@ -87,10 +87,10 @@ Write-Host ""
 
 # ─── PASO 4: Esperar a que Eureka tenga los microservicios registrados ─
 # En vez de un sleep fijo, se consulta el propio Eureka hasta ver que
-# al menos 9 instancias estan registradas (los 9 microservicios que
-# usan Service Discovery; ms-usuarios queda fuera, es esperado).
-Write-Host "[4/6] Esperando a que los microservicios se registren en Eureka..." -ForegroundColor Cyan
-$MIN_INSTANCIAS_ESPERADAS = 9
+# al menos 10 instancias estan registradas (los 9 microservicios
+# originales + ms-chatbot; ms-usuarios queda fuera, es esperado).
+Write-Host "[4/7] Esperando a que los microservicios se registren en Eureka..." -ForegroundColor Cyan
+$MIN_INSTANCIAS_ESPERADAS = 10
 $eurekaListo = $false
 $intentos = 0
 while ($intentos -lt 30) {
@@ -118,7 +118,7 @@ Write-Host ""
 # ─── PASO 5: Cargar seeds (metodo UTF-8 seguro) ─────────────
 # Se usa 'docker cp' + 'source' porque el pipe (Get-Content |) corrompe
 # las tildes y la enie. Este metodo respeta los caracteres en espanol.
-Write-Host "[5/6] Cargando datos de prueba en la base de datos..." -ForegroundColor Cyan
+Write-Host "[5/7] Cargando datos de prueba en la base de datos..." -ForegroundColor Cyan
 foreach ($seed in $SEEDS) {
     $ruta = Join-Path $BACKEND_PATH $seed
     if (Test-Path $ruta) {
@@ -136,8 +136,35 @@ foreach ($seed in $SEEDS) {
 Write-Host "      [OK] Carga de datos finalizada" -ForegroundColor Green
 Write-Host ""
 
-# ─── PASO 6: Iniciar Frontend React ─────────────────────────
-Write-Host "[6/6] Iniciando el frontend React..." -ForegroundColor Cyan
+# ─── PASO 6: Verificar que Ollama este corriendo (SaludBot) ──
+# ms-chatbot llama a Ollama en http://host.docker.internal:11434 desde
+# dentro del contenedor. Ollama NO se levanta con docker compose (corre
+# directo en Windows), asi que si no esta activo, SaludBot respondera
+# con el mensaje de fallback del Gateway en vez de conversar de verdad.
+# Este paso solo informa el estado, no bloquea el arranque del resto.
+Write-Host "[6/7] Verificando Ollama (necesario para SaludBot)..." -ForegroundColor Cyan
+$ollamaOk = $false
+try {
+    $resp = Invoke-RestMethod -Uri "http://localhost:11434/api/tags" -TimeoutSec 5
+    $modelos = @($resp.models | ForEach-Object { $_.name })
+    if ($modelos -contains "llama3.2:3b") {
+        $ollamaOk = $true
+        Write-Host "      [OK] Ollama esta corriendo con llama3.2:3b disponible" -ForegroundColor Green
+    } elseif ($modelos.Count -gt 0) {
+        Write-Host "      [!] Ollama esta corriendo, pero llama3.2:3b no esta descargado" -ForegroundColor Yellow
+        Write-Host "      [!] Modelos disponibles: $($modelos -join ', ')" -ForegroundColor Yellow
+        Write-Host "      [!] Ejecuta: ollama pull llama3.2:3b" -ForegroundColor Yellow
+    } else {
+        Write-Host "      [!] Ollama responde pero no tiene ningun modelo descargado" -ForegroundColor Yellow
+    }
+} catch {
+    Write-Host "      [!] Ollama no esta corriendo (SaludBot no funcionara hasta que lo inicies)" -ForegroundColor Yellow
+    Write-Host "      [!] Abre otra terminal y ejecuta: ollama serve" -ForegroundColor Yellow
+}
+Write-Host ""
+
+# ─── PASO 7: Iniciar Frontend React ─────────────────────────
+Write-Host "[7/7] Iniciando el frontend React..." -ForegroundColor Cyan
 if (-not (Test-Path (Join-Path $FRONTEND_PATH "node_modules"))) {
     Write-Host "      node_modules no existe. Instalando dependencias (npm install)..." -ForegroundColor Yellow
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$FRONTEND_PATH'; npm install; npm start" -WindowStyle Normal
@@ -162,7 +189,15 @@ Write-Host " URLs del sistema:" -ForegroundColor White
 Write-Host "   Frontend     -> http://localhost:3000" -ForegroundColor Cyan
 Write-Host "   Eureka       -> http://localhost:8761" -ForegroundColor Cyan
 Write-Host "   API Gateway  -> http://localhost:8090" -ForegroundColor Cyan
-Write-Host "   Swagger      -> http://localhost:8080/swagger-ui/index.html" -ForegroundColor Cyan
+Write-Host "   Swagger      -> http://localhost:8080/swagger-ui/index.html (cada microservicio tiene el suyo en su puerto)" -ForegroundColor Cyan
+Write-Host ""
+Write-Host " SaludBot (chatbot con IA):" -ForegroundColor White
+if ($ollamaOk) {
+    Write-Host "   [OK] Listo para usarse desde el icono flotante en el sitio" -ForegroundColor Green
+} else {
+    Write-Host "   [!] Ollama no esta corriendo: el bot mostrara un mensaje de 'no disponible'" -ForegroundColor Yellow
+    Write-Host "   [!] Para activarlo: abre una terminal y ejecuta 'ollama serve'" -ForegroundColor Yellow
+}
 Write-Host ""
 Write-Host " Cuentas de prueba:" -ForegroundColor White
 Write-Host "   Admin     -> admin@rednorte.cl     / admin123" -ForegroundColor Yellow

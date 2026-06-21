@@ -211,6 +211,18 @@ resilience4j:
         failure-rate-threshold: 50
         wait-duration-in-open-state: 15s
 
+  timelimiter:
+    instances:
+      # IMPORTANTE: Resilience4j usa un TimeLimiter con default de 1s
+      # que envuelve cada llamada del circuit breaker, INDEPENDIENTE del
+      # response-timeout configurado en la metadata de la ruta del
+      # gateway. Sin esta seccion, toda llamada a Ollama (que facilmente
+      # tarda mas de 1s en generar texto) expiraba por este timeout
+      # interno y caia al fallback, sin relacion con que ms-chatbot
+      # estuviera funcionando bien. Bug real detectado en produccion.
+      ms-chatbot-cb:
+        timeout-duration: 55s
+
 management:
   endpoints:
     web:

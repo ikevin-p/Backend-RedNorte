@@ -2,17 +2,26 @@ package com.rednorte.gateway;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
+/**
+ * Cuando un circuit breaker se abre, Spring Cloud Gateway reenvia la
+ * peticion ORIGINAL (con su metodo HTTP original: GET, POST, PUT, etc.)
+ * hacia la fallbackUri via forward:. Si aqui solo se mapea @GetMapping,
+ * cualquier endpoint que reciba un POST/PUT/DELETE y dispare el
+ * fallback termina en 405 Method Not Allowed en vez del mensaje de
+ * error esperado (bug real detectado: ocurria con POST /chatbot/mensaje).
+ * Por eso cada metodo usa @RequestMapping sin 'method', que acepta
+ * cualquier verbo HTTP.
+ */
 @RestController
 @RequestMapping("/fallback")
 public class FallbackController {
 
-    @GetMapping("/usuarios")
+    @RequestMapping("/usuarios")
     public ResponseEntity<Map<String, String>> usuariosFallback() {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
             .body(Map.of(
@@ -22,7 +31,7 @@ public class FallbackController {
             ));
     }
 
-    @GetMapping("/consultas")
+    @RequestMapping("/consultas")
     public ResponseEntity<Map<String, String>> consultasFallback() {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
             .body(Map.of(
@@ -32,7 +41,7 @@ public class FallbackController {
             ));
     }
 
-    @GetMapping("/reasignacion")
+    @RequestMapping("/reasignacion")
     public ResponseEntity<Map<String, String>> reasignacionFallback() {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
             .body(Map.of(
@@ -42,7 +51,7 @@ public class FallbackController {
             ));
     }
 
-    @GetMapping("/ficha")
+    @RequestMapping("/ficha")
     public ResponseEntity<Map<String, String>> fichaFallback() {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
             .body(Map.of(
@@ -52,7 +61,7 @@ public class FallbackController {
             ));
     }
 
-    @GetMapping("/chatbot")
+    @RequestMapping("/chatbot")
     public ResponseEntity<Map<String, String>> chatbotFallback() {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
             .body(Map.of(
