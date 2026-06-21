@@ -3,7 +3,7 @@ package com.example.Backend_usuarios.model;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -28,10 +28,14 @@ public class Rol {
     @Column(name = "r_estado")
     private String estado;   
 
-    // @JsonBackReference: este lado NO se serializa, corta el ciclo
-    // infinito Usuario -> Rol -> usuarios -> Rol -> ... (ver Usuario.java,
-    // que tiene @JsonManagedReference en su lado del rol).
-    @JsonBackReference
+    // @JsonIgnore (no @JsonBackReference): este campo nunca se serializa.
+    // No es parte de un par managed/back valido porque Usuario.rol (el
+    // otro lado) no tiene @JsonManagedReference -- ver el comentario
+    // detallado en Usuario.java sobre por que esa anotacion era invalida
+    // ahi para Jackson 3. @JsonIgnore es mas simple y correcto aqui: solo
+    // se necesita excluir el campo de la serializacion, no resolver un
+    // ciclo real (Usuario.rol jamas intenta serializar de vuelta a esta lista).
+    @JsonIgnore
     @OneToMany(mappedBy = "rol")
     private List<Usuario> usuarios;
 

@@ -36,12 +36,16 @@ public class Persona {
     private String sexo;
 
     // @JsonBackReference: este lado NO se serializa, corta el ciclo
-    // infinito Usuario -> Persona -> Usuario -> ... (ver Usuario.java).
+    // infinito Usuario -> Persona -> Usuario -> ... (ver Usuario.java,
+    // que tiene @JsonManagedReference("persona-usuario")).
     // FetchType.LAZY: evita que Hibernate cargue Usuario de forma
     // inmediata al cargar Persona, lo cual causaba una recursion real
     // en la capa de datos (no solo en la serializacion JSON) -- esto
     // provocaba que GET /usuarios se quedara colgado indefinidamente.
-    @JsonBackReference
+    // Nombre explicito requerido: el id por defecto colisionaba con
+    // el otro par de referencias de esta clase (Rol), causando un
+    // InvalidDefinitionException de Jackson 3 al serializar.
+    @JsonBackReference("persona-usuario")
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "p_usuario_id")
     private Usuario usuario;

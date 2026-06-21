@@ -28,6 +28,11 @@
 	</scm>
 	<properties>
 		<java.version>17</java.version>
+		<!-- Spring Boot 4.0.6 requiere Spring Cloud 2025.1.x (compatible
+		     desde 4.0.1+), distinto al 2025.0.0 que usan los demas
+		     microservicios (compatibles con Spring Boot 3.5.x). Usar la
+		     version equivocada rompe la resolucion de dependencias. -->
+		<spring-cloud.version>2025.1.1</spring-cloud.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -42,6 +47,16 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<!-- Eureka Client: sin esto, el servicio nunca se registra y el
+		     API Gateway no puede enrutarle ninguna peticion via lb://,
+		     dejando /usuarios/login y /usuarios (registro) inalcanzables
+		     desde el frontend. Bug real detectado: login/registro no
+		     funcionaban porque este microservicio era el unico de los 13
+		     sin soporte de Service Discovery. -->
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springdoc</groupId>
@@ -86,6 +101,18 @@
 			<scope>runtime</scope>
 		</dependency>
 	</dependencies>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>${spring-cloud.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 
 	<build>
 		<plugins>
