@@ -38,9 +38,10 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Permitir TODAS las peticiones OPTIONS (preflight CORS del navegador)
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                // Endpoints publicos: login, registro, swagger
+                // Endpoints publicos: login, registro, recuperacion de contraseña, swagger
                 .requestMatchers("/usuarios/login").permitAll()
                 .requestMatchers(HttpMethod.POST, "/usuarios").permitAll()
+                .requestMatchers(HttpMethod.POST, "/usuarios/recuperacion/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html",
                                  "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
                 .requestMatchers("/actuator/**").permitAll()

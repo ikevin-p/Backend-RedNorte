@@ -98,6 +98,11 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:mysql://cnt-db-rednorte:3306/db_usuarios?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=UTF-8
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=11223344
+      # MAIL_PASSWORD viene del archivo .env (no versionado en Git) o de
+      # una variable de entorno real del sistema. Nunca se hardcodea
+      # aqui: es la contraseña de aplicacion de Gmail para SMTP.
+      - MAIL_USERNAME=${MAIL_USERNAME:-rednorte.in@gmail.com}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
     depends_on:
       db-rednorte:
         condition: service_healthy

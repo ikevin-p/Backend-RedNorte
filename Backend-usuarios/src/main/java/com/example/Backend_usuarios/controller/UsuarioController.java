@@ -4,6 +4,7 @@ import com.example.Backend_usuarios.dto.UsuarioRequestDTO;
 import com.example.Backend_usuarios.dto.UsuarioResponseDTO;
 import com.example.Backend_usuarios.model.Usuario;
 import com.example.Backend_usuarios.security.JwtUtil;
+import com.example.Backend_usuarios.service.RecuperacionService;
 import com.example.Backend_usuarios.service.UsuarioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -24,10 +26,12 @@ public class UsuarioController {
 
     private final UsuarioService usuarioService;
     private final JwtUtil jwtUtil;
+    private final RecuperacionService recuperacionService;
 
-    public UsuarioController(UsuarioService usuarioService, JwtUtil jwtUtil) {
+    public UsuarioController(UsuarioService usuarioService, JwtUtil jwtUtil, RecuperacionService recuperacionService) {
         this.usuarioService = usuarioService;
         this.jwtUtil = jwtUtil;
+        this.recuperacionService = recuperacionService;
     }
 
     private UsuarioResponseDTO toDTO(Usuario usuario) {
@@ -94,5 +98,47 @@ public class UsuarioController {
         dto.setToken(token);
 
         return ResponseEntity.ok(dto);
+    }
+
+    @Operation(summary = "Solicitar codigo de recuperacion de contraseña",
+            description = "Envia un codigo de 6 digitos al correo si la cuenta existe. Por seguridad, siempre responde 200 sin revelar si el mail esta registrado o no.")
+    @PostMapping("/recuperacion/solicitar")
+    public ResponseEntity<Map<String, String>> solicitarRecuperacion(@RequestBody Map<String, String> body) {
+        String mail = body.get("mail");
+        recuperacionService.solicitarCodigo(mail);
+        return ResponseEntity.ok(Map.of(
+            "mensaje", "Si el correo está registrado, recibirás un código de verificación en unos minutos."
+        ));
+    }
+
+    @Operation(summary = "Validar el codigo de recuperacion",
+            description = "Confirma si el codigo de 6 digitos es correcto y no ha expirado, antes de pedir la nueva contraseña.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Codigo valido"),
+        @ApiResponse(responseCode = "400", description = "Codigo invalido o expirado")
+    })
+    @PostMapping("/recuperacion/validar")
+    public ResponseEntity<Map<String, String>> validarCodigoRecuperacion(@RequestBody Map<String, String> body) {
+        boolean valido = recuperacionService.validarCodigo(body.get("mail"), body.get("codigo"));
+        if (!valido) {
+            return ResponseEntity.badRequest().body(Map.of("error", "El código ingresado no es válido o ya expiró."));
+        }
+        return ResponseEntity.ok(Map.of("mensaje", "Código válido."));
+    }
+
+    @Operation(summary = "Cambiar la contraseña usando el codigo de recuperacion",
+            description = "Valida el codigo nuevamente (defensa en profundidad) y, si es correcto, actualiza la contraseña.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Contraseña actualizada"),
+        @ApiResponse(responseCode = "400", description = "Codigo invalido o expirado")
+    })
+    @PostMapping("/recuperacion/cambiar")
+    public ResponseEntity<Map<String, String>> cambiarPasswordConCodigo(@RequestBody Map<String, String> body) {
+        boolean exito = recuperacionService.cambiarPassword(
+                body.get("mail"), body.get("codigo"), body.get("nuevaPassword"));
+        if (!exito) {
+            return ResponseEntity.badRequest().body(Map.of("error", "El código ingresado no es válido o ya expiró."));
+        }
+        return ResponseEntity.ok(Map.of("mensaje", "Contraseña actualizada correctamente."));
     }
 }
