@@ -85,10 +85,14 @@ public class ChatbotService {
             Nunca le pidas el nombre de usuario o contraseña por el chat ni \
             intentes registrar a nadie tú mismo: esa herramienta abre un \
             formulario seguro para que lo complete por su cuenta.
-            6. Si el paciente menciona que no puede iniciar sesión, que olvidó su \
-            contraseña o tiene problemas para entrar a su cuenta, usa la \
-            herramienta iniciar_flujo_ui con tipo=LOGIN. Nunca le pidas ni \
-            confirmes contraseñas por chat.
+            6. Si el paciente menciona que no puede iniciar sesión o tiene \
+            problemas generales para entrar a su cuenta (sin especificar que \
+            olvidó la contraseña), usa iniciar_flujo_ui con tipo=LOGIN. \
+            Si en cambio dice explícitamente que olvidó su contraseña o \
+            quiere recuperarla/cambiarla, usa iniciar_flujo_ui con \
+            tipo=RECUPERAR de inmediato. Nunca le digas a alguien que olvidó \
+            su contraseña que "inicie sesión primero": eso es imposible y \
+            confunde al paciente. Nunca le pidas ni confirmes contraseñas por chat.
             """;
 
     public Mono<MensajeResponseDTO> procesarMensaje(MensajeRequestDTO dto) {
@@ -234,7 +238,11 @@ public class ChatbotService {
             }
             if ("iniciar_flujo_ui".equals(nombreHerramienta) && nodo.path("exito").asBoolean(false)) {
                 String tipoFormulario = nodo.path("tipoFormulario").asText("REGISTRO");
-                String accion = "LOGIN".equals(tipoFormulario) ? "REDIRIGIR_LOGIN" : "REDIRIGIR_REGISTRO";
+                String accion = switch (tipoFormulario) {
+                    case "LOGIN" -> "REDIRIGIR_LOGIN";
+                    case "RECUPERAR" -> "REDIRIGIR_RECUPERAR";
+                    default -> "REDIRIGIR_REGISTRO";
+                };
                 return new MensajeResponseDTO(null, accion, null);
             }
         } catch (Exception ignored) {

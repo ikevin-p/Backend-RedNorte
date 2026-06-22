@@ -316,6 +316,28 @@ class ChatbotServiceTest {
                 .verifyComplete();
     }
 
+    @Test
+    @DisplayName("iniciar_flujo_ui con tipo RECUPERAR marca accionRealizada=REDIRIGIR_RECUPERAR")
+    void procesarMensaje_iniciarFlujoUiRecuperar_marcaRedirigirRecuperar() {
+        when(repository.findByIdentificadorConversacionOrderByFechaHoraAsc("conv-11")).thenReturn(List.of());
+
+        when(ollamaService.chat(anyList(), anyList()))
+                .thenReturn(Mono.just(respuestaConToolCall("iniciar_flujo_ui", Map.of("tipo", "RECUPERAR"))))
+                .thenReturn(Mono.just(respuestaTexto("Te abrí el formulario para recuperar tu contraseña.")));
+
+        when(herramientas.ejecutar(eq("iniciar_flujo_ui"), any(), any(), any()))
+                .thenReturn(Mono.just("{\"exito\": true, \"tipoFormulario\": \"RECUPERAR\"}"));
+
+        MensajeRequestDTO dto = new MensajeRequestDTO();
+        dto.setMensaje("olvidé mi contraseña");
+        dto.setIdentificadorConversacion("conv-11");
+        dto.setUsuarioId(null);
+
+        StepVerifier.create(chatbotService.procesarMensaje(dto))
+                .assertNext(resp -> org.junit.jupiter.api.Assertions.assertEquals("REDIRIGIR_RECUPERAR", resp.getAccionRealizada()))
+                .verifyComplete();
+    }
+
     private MensajeChatbot mensajeGuardado(String rol, String contenido) {
         var m = new MensajeChatbot();
         m.setRol(rol);

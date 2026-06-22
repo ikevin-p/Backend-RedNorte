@@ -175,6 +175,17 @@ class HerramientasChatbotTest {
     }
 
     @Test
+    @DisplayName("iniciar_flujo_ui con tipo RECUPERAR retorna el tipo de formulario correcto")
+    void ejecutar_iniciarFlujoUi_recuperar_retornaTipoFormularioRecuperar() {
+        String resultado = herramientas.ejecutar("iniciar_flujo_ui", Map.of("tipo", "RECUPERAR"), null, null)
+                .block();
+
+        assertNotNull(resultado);
+        assertTrue(resultado.contains("\"exito\": true"));
+        assertTrue(resultado.contains("\"tipoFormulario\": \"RECUPERAR\""));
+    }
+
+    @Test
     @DisplayName("iniciar_flujo_ui con un tipo invalido cae por defecto a REGISTRO")
     void ejecutar_iniciarFlujoUi_tipoInvalido_caePorDefectoARegistro() {
         String resultado = herramientas.ejecutar("iniciar_flujo_ui", Map.of("tipo", "ALGO_RARO"), null, null)

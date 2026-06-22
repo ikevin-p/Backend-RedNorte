@@ -79,16 +79,18 @@ public class HerramientasChatbot {
                         "iniciar_flujo_ui",
                         "Abre un formulario emergente en la interfaz para que el paciente complete una accion por su cuenta " +
                         "(NUNCA se le pide la contraseña por chat). Usar esta herramienta INMEDIATAMENTE cuando el paciente " +
-                        "pida ayuda para registrarse, crear una cuenta, iniciar sesion, o cuando un visitante sin cuenta " +
-                        "confirme que quiere agendar una cita. No existe ninguna otra forma de crear cuentas o iniciar " +
-                        "sesion: nunca inventes otra herramienta para esto.",
+                        "pida ayuda para registrarse, crear una cuenta, iniciar sesion, recuperar u olvido su contraseña, " +
+                        "o cuando un visitante sin cuenta confirme que quiere agendar una cita. No existe ninguna otra " +
+                        "forma de crear cuentas, iniciar sesion o recuperar contraseñas: nunca inventes otra herramienta " +
+                        "para esto, y nunca le digas al paciente que inicie sesion para poder recuperar su contraseña " +
+                        "(eso no tiene sentido: usa tipo=RECUPERAR directamente).",
                         Map.of(
                                 "type", "object",
                                 "properties", Map.of(
                                         "tipo", Map.of(
                                                 "type", "string",
-                                                "enum", List.of("REGISTRO", "LOGIN"),
-                                                "description", "REGISTRO si el paciente quiere crear una cuenta nueva, LOGIN si ya tiene cuenta pero no puede ingresar"
+                                                "enum", List.of("REGISTRO", "LOGIN", "RECUPERAR"),
+                                                "description", "REGISTRO si quiere crear una cuenta nueva, LOGIN si ya tiene cuenta pero no puede ingresar, RECUPERAR si olvido su contraseña"
                                         )
                                 ),
                                 "required", List.of("tipo")
@@ -116,7 +118,7 @@ public class HerramientasChatbot {
      */
     private Mono<String> iniciarFlujoUi(Map<String, Object> argumentos) {
         String tipo = String.valueOf(argumentos.getOrDefault("tipo", "REGISTRO")).toUpperCase();
-        if (!tipo.equals("REGISTRO") && !tipo.equals("LOGIN")) tipo = "REGISTRO";
+        if (!tipo.equals("REGISTRO") && !tipo.equals("LOGIN") && !tipo.equals("RECUPERAR")) tipo = "REGISTRO";
         return Mono.just("{\"exito\": true, \"tipoFormulario\": \"" + tipo + "\"}");
     }
 
