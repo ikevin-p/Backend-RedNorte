@@ -4,6 +4,7 @@ import com.example.Backend_usuarios.dto.UsuarioRequestDTO;
 import com.example.Backend_usuarios.dto.UsuarioResponseDTO;
 import com.example.Backend_usuarios.model.Usuario;
 import com.example.Backend_usuarios.security.JwtUtil;
+import com.example.Backend_usuarios.service.EmailService;
 import com.example.Backend_usuarios.service.RecuperacionService;
 import com.example.Backend_usuarios.service.UsuarioService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,11 +28,14 @@ public class UsuarioController {
     private final UsuarioService usuarioService;
     private final JwtUtil jwtUtil;
     private final RecuperacionService recuperacionService;
+    private final EmailService emailService;
 
-    public UsuarioController(UsuarioService usuarioService, JwtUtil jwtUtil, RecuperacionService recuperacionService) {
+    public UsuarioController(UsuarioService usuarioService, JwtUtil jwtUtil,
+                              RecuperacionService recuperacionService, EmailService emailService) {
         this.usuarioService = usuarioService;
         this.jwtUtil = jwtUtil;
         this.recuperacionService = recuperacionService;
+        this.emailService = emailService;
     }
 
     private UsuarioResponseDTO toDTO(Usuario usuario) {
@@ -70,6 +74,20 @@ public class UsuarioController {
     public List<UsuarioResponseDTO> usuarioListar() {
         return this.usuarioService.usuarioListar()
             .stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    @Operation(summary = "Obtener un usuario por su ID",
+            description = "Usado tambien internamente por ms-chatbot para obtener el correo del paciente y enviarle la confirmacion de su cita.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Usuario encontrado"),
+        @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
+    })
+    @GetMapping("/{id}")
+    public ResponseEntity<UsuarioResponseDTO> usuarioPorId(@PathVariable String id) {
+        return this.usuarioService.buscarPorId(id)
+            .map(this::toDTO)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
     }
 
     @Operation(summary = "Crear nuevo usuario")
@@ -140,5 +158,21 @@ public class UsuarioController {
             return ResponseEntity.badRequest().body(Map.of("error", "El código ingresado no es válido o ya expiró."));
         }
         return ResponseEntity.ok(Map.of("mensaje", "Contraseña actualizada correctamente."));
+    }
+
+    @Operation(summary = "Enviar correo de confirmacion de cita agendada",
+            description = "Dispara el correo HTML de confirmacion (logo, banner de marca). Lo invocan " +
+                    "AgendarPage.jsx y ms-chatbot justo despues de reservar el bloque con exito. Si el envio " +
+                    "del correo falla, no se reporta como error: la cita ya quedo agendada correctamente " +
+                    "antes de llegar aqui (ver EmailService).")
+    @PostMapping("/notificaciones/confirmacion-cita")
+    public ResponseEntity<Map<String, String>> confirmacionCita(@RequestBody Map<String, String> body) {
+        emailService.enviarConfirmacionCita(
+                body.get("mail"),
+                body.get("nombrePaciente"),
+                body.get("especialidad"),
+                body.get("fecha"),
+                body.get("hora"));
+        return ResponseEntity.ok(Map.of("mensaje", "Correo de confirmacion enviado."));
     }
 }

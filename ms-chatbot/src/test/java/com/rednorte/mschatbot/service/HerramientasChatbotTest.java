@@ -1,207 +1,77 @@
 package com.rednorte.mschatbot.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sun.net.httpserver.HttpServer;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests de HerramientasChatbot usando un servidor HTTP real embebido
- * (com.sun.net.httpserver, incluido en el JDK) en vez de mockear la
- * cadena fluida de WebClient con Mockito. Esto verifica el
- * comportamiento real de las llamadas HTTP (URI, body, parseo de
- * respuesta) sin depender de librerias adicionales de mocking HTTP
- * que el proyecto no tiene instaladas.
+ * Tests unitarios de HerramientasChatbot.
+ *
+ * Ya no hay llamadas HTTP a otros microservicios que mockear (ver el
+ * javadoc de la clase): la unica herramienta real es iniciar_flujo_ui,
+ * que solo valida el tipo de formulario solicitado y devuelve un JSON
+ * de confirmacion para que ChatbotService lo traduzca en una accion
+ * de UI (REDIRIGIR_REGISTRO/LOGIN/RECUPERAR/AGENDAR).
  */
 @DisplayName("Tests unitarios — HerramientasChatbot")
 class HerramientasChatbotTest {
 
-    private HttpServer agendaServer;
-    private HttpServer consultasServer;
-    private HerramientasChatbot herramientas;
+    private final HerramientasChatbot herramientas = new HerramientasChatbot();
 
-    @BeforeEach
-    void setUp() throws Exception {
-        agendaServer = HttpServer.create(new InetSocketAddress(0), 0);
-        consultasServer = HttpServer.create(new InetSocketAddress(0), 0);
-        agendaServer.start();
-        consultasServer.start();
-
-        String agendaUrl = "http://localhost:" + agendaServer.getAddress().getPort();
-        String consultasUrl = "http://localhost:" + consultasServer.getAddress().getPort();
-
-        herramientas = new HerramientasChatbot(agendaUrl, consultasUrl, new ObjectMapper());
-    }
-
-    @AfterEach
-    void tearDown() {
-        agendaServer.stop(0);
-        consultasServer.stop(0);
-    }
-
-    private void responder(HttpServer server, String path, int status, String jsonBody) {
-        server.createContext(path, exchange -> {
-            byte[] bytes = jsonBody.getBytes(StandardCharsets.UTF_8);
-            exchange.getResponseHeaders().add("Content-Type", "application/json");
-            exchange.sendResponseHeaders(status, bytes.length);
-            exchange.getResponseBody().write(bytes);
-            exchange.close();
-        });
+    @Test
+    @DisplayName("definiciones() expone unicamente la herramienta iniciar_flujo_ui")
+    void definiciones_expoeSoloIniciarFlujoUi() {
+        var definiciones = herramientas.definiciones();
+        assertEquals(1, definiciones.size());
+        assertEquals("iniciar_flujo_ui", definiciones.get(0).getFunction().getName());
     }
 
     @Test
-    @DisplayName("definiciones() retorna exactamente las 3 herramientas con sus nombres correctos")
-    void definiciones_retornaLasTresHerramientas() {
-        var tools = herramientas.definiciones();
-        assertEquals(3, tools.size());
-        assertEquals("buscar_horarios_disponibles", tools.get(0).getFunction().getName());
-        assertEquals("crear_cita_real", tools.get(1).getFunction().getName());
-        assertEquals("iniciar_flujo_ui", tools.get(2).getFunction().getName());
+    @DisplayName("iniciar_flujo_ui con tipo REGISTRO confirma el formulario de registro")
+    void ejecutar_iniciarFlujoUiRegistro_confirmaFormulario() {
+        String resultado = herramientas.ejecutar("iniciar_flujo_ui", Map.of("tipo", "REGISTRO"), null, null).block();
+        assertEquals("{\"exito\": true, \"tipoFormulario\": \"REGISTRO\"}", resultado);
     }
 
     @Test
-    @DisplayName("buscar_horarios_disponibles con bloques reales los resume con especialidad correcta")
-    void ejecutar_buscarHorarios_resumeBloquesConEspecialidad() {
-        String bloquesJson = "[{\"id\":501,\"doctorId\":\"USR002\",\"horaInicio\":\"08:00:00\",\"estado\":\"DISPONIBLE\"}]";
-        responder(agendaServer, "/agenda/disponibles/2026-06-22", 200, bloquesJson);
-
-        String resultado = herramientas.ejecutar("buscar_horarios_disponibles", Map.of("fecha", "2026-06-22"), "USR010", "Juan Perez")
-                .block();
-
-        assertNotNull(resultado);
-        assertTrue(resultado.contains("\"bloqueId\":501"));
-        assertTrue(resultado.contains("08:00"));
-        assertTrue(resultado.contains("Cardiología"));
+    @DisplayName("iniciar_flujo_ui con tipo LOGIN confirma el formulario de inicio de sesion")
+    void ejecutar_iniciarFlujoUiLogin_confirmaFormulario() {
+        String resultado = herramientas.ejecutar("iniciar_flujo_ui", Map.of("tipo", "login"), "USR010", "Juan Perez").block();
+        assertEquals("{\"exito\": true, \"tipoFormulario\": \"LOGIN\"}", resultado);
     }
 
     @Test
-    @DisplayName("buscar_horarios_disponibles sin bloques retorna mensaje de no disponibilidad")
-    void ejecutar_buscarHorarios_sinBloques_retornaNoDisponible() {
-        responder(agendaServer, "/agenda/disponibles/2026-06-23", 200, "[]");
-
-        String resultado = herramientas.ejecutar("buscar_horarios_disponibles", Map.of("fecha", "2026-06-23"), "USR010", "Juan Perez")
-                .block();
-
-        assertNotNull(resultado);
-        assertTrue(resultado.contains("\"disponible\": false"));
+    @DisplayName("iniciar_flujo_ui con tipo RECUPERAR confirma el formulario de recuperacion")
+    void ejecutar_iniciarFlujoUiRecuperar_confirmaFormulario() {
+        String resultado = herramientas.ejecutar("iniciar_flujo_ui", Map.of("tipo", "RECUPERAR"), null, null).block();
+        assertEquals("{\"exito\": true, \"tipoFormulario\": \"RECUPERAR\"}", resultado);
     }
 
     @Test
-    @DisplayName("buscar_horarios_disponibles con fecha mal formada retorna error sin lanzar excepcion")
-    void ejecutar_buscarHorarios_fechaInvalida_retornaError() {
-        String resultado = herramientas.ejecutar("buscar_horarios_disponibles", Map.of("fecha", "no-es-una-fecha"), "USR010", "Juan Perez")
-                .block();
-
-        assertNotNull(resultado);
-        assertTrue(resultado.contains("\"exito\": false"));
+    @DisplayName("iniciar_flujo_ui con tipo AGENDAR confirma el modal de agendamiento")
+    void ejecutar_iniciarFlujoUiAgendar_confirmaFormulario() {
+        String resultado = herramientas.ejecutar("iniciar_flujo_ui", Map.of("tipo", "AGENDAR"), "USR010", "Juan Perez").block();
+        assertEquals("{\"exito\": true, \"tipoFormulario\": \"AGENDAR\"}", resultado);
     }
 
     @Test
-    @DisplayName("crear_cita_real sin usuarioId (visitante anonimo) retorna requiereRegistro=true")
-    void ejecutar_crearCita_visitanteAnonimo_retornaRequiereRegistro() {
-        String resultado = herramientas.ejecutar("crear_cita_real",
-                        Map.of("bloqueId", 501, "nombrePaciente", "Juan", "rut", "11111111-1", "motivoConsulta", "Control"),
-                        null, null)
-                .block();
+    @DisplayName("iniciar_flujo_ui sin tipo (o con uno invalido) usa REGISTRO como respaldo")
+    void ejecutar_iniciarFlujoUiSinTipo_usaRegistroPorDefecto() {
+        String resultado = herramientas.ejecutar("iniciar_flujo_ui", Map.of(), null, null).block();
+        assertEquals("{\"exito\": true, \"tipoFormulario\": \"REGISTRO\"}", resultado);
 
-        assertNotNull(resultado);
-        assertTrue(resultado.contains("\"requiereRegistro\": true"));
+        String resultadoInvalido = herramientas.ejecutar("iniciar_flujo_ui", Map.of("tipo", "ALGO_INVENTADO"), null, null).block();
+        assertEquals("{\"exito\": true, \"tipoFormulario\": \"REGISTRO\"}", resultadoInvalido);
     }
 
     @Test
-    @DisplayName("crear_cita_real exitoso crea la consulta, reserva el bloque y retorna exito=true")
-    void ejecutar_crearCita_usuarioConSesion_agendaExitosamente() {
-        responder(consultasServer, "/consultas", 200, "{\"id\":999}");
-        responder(agendaServer, "/agenda/501/reservar", 200,
-                "{\"fecha\":\"2026-06-22\",\"horaInicio\":\"08:00:00\",\"estado\":\"RESERVADO\"}");
-
-        String resultado = herramientas.ejecutar("crear_cita_real",
-                        Map.of("bloqueId", 501, "nombrePaciente", "Juan Perez", "rut", "11111111-1", "motivoConsulta", "Control"),
-                        "USR010", "Juan Perez")
-                .block();
-
-        assertNotNull(resultado);
-        assertTrue(resultado.contains("\"exito\":true"));
-        assertTrue(resultado.contains("\"consultaId\":999"));
-        assertTrue(resultado.contains("08:00"));
-    }
-
-    @Test
-    @DisplayName("crear_cita_real cuando el bloque ya fue tomado (reserva falla) retorna error claro")
-    void ejecutar_crearCita_bloqueYaTomado_retornaError() {
-        responder(consultasServer, "/consultas", 200, "{\"id\":999}");
-        agendaServer.createContext("/agenda/501/reservar", exchange -> {
-            exchange.sendResponseHeaders(400, -1);
-            exchange.close();
-        });
-
-        String resultado = herramientas.ejecutar("crear_cita_real",
-                        Map.of("bloqueId", 501, "nombrePaciente", "Juan Perez", "rut", "11111111-1", "motivoConsulta", "Control"),
-                        "USR010", "Juan Perez")
-                .block();
-
-        assertNotNull(resultado);
-        assertTrue(resultado.contains("\"exito\": false"));
-        assertTrue(resultado.contains("ya fue tomado"));
-    }
-
-    @Test
-    @DisplayName("iniciar_flujo_ui con tipo REGISTRO retorna exito y el tipo de formulario correcto")
-    void ejecutar_iniciarFlujoUi_registro_retornaTipoFormularioRegistro() {
-        String resultado = herramientas.ejecutar("iniciar_flujo_ui", Map.of("tipo", "REGISTRO"), null, null)
-                .block();
-
-        assertNotNull(resultado);
-        assertTrue(resultado.contains("\"exito\": true"));
-        assertTrue(resultado.contains("\"tipoFormulario\": \"REGISTRO\""));
-    }
-
-    @Test
-    @DisplayName("iniciar_flujo_ui con tipo LOGIN retorna el tipo de formulario correcto")
-    void ejecutar_iniciarFlujoUi_login_retornaTipoFormularioLogin() {
-        String resultado = herramientas.ejecutar("iniciar_flujo_ui", Map.of("tipo", "LOGIN"), "USR010", "Juan")
-                .block();
-
-        assertNotNull(resultado);
-        assertTrue(resultado.contains("\"tipoFormulario\": \"LOGIN\""));
-    }
-
-    @Test
-    @DisplayName("iniciar_flujo_ui con tipo RECUPERAR retorna el tipo de formulario correcto")
-    void ejecutar_iniciarFlujoUi_recuperar_retornaTipoFormularioRecuperar() {
-        String resultado = herramientas.ejecutar("iniciar_flujo_ui", Map.of("tipo", "RECUPERAR"), null, null)
-                .block();
-
-        assertNotNull(resultado);
-        assertTrue(resultado.contains("\"exito\": true"));
-        assertTrue(resultado.contains("\"tipoFormulario\": \"RECUPERAR\""));
-    }
-
-    @Test
-    @DisplayName("iniciar_flujo_ui con un tipo invalido cae por defecto a REGISTRO")
-    void ejecutar_iniciarFlujoUi_tipoInvalido_caePorDefectoARegistro() {
-        String resultado = herramientas.ejecutar("iniciar_flujo_ui", Map.of("tipo", "ALGO_RARO"), null, null)
-                .block();
-
-        assertNotNull(resultado);
-        assertTrue(resultado.contains("\"tipoFormulario\": \"REGISTRO\""));
-    }
-
-    @Test
-    @DisplayName("ejecutar con un nombre de herramienta desconocido retorna error sin lanzar excepcion")
+    @DisplayName("Una herramienta inexistente retorna un JSON de error con exito=false")
     void ejecutar_herramientaDesconocida_retornaError() {
-        String resultado = herramientas.ejecutar("herramienta_inexistente", Map.of(), "USR010", "Juan Perez")
-                .block();
-
-        assertNotNull(resultado);
+        String resultado = herramientas.ejecutar("agendar_cita_por_texto", Map.of(), "USR010", "Juan Perez").block();
+        assertTrue(resultado.contains("\"exito\": false"));
         assertTrue(resultado.contains("Herramienta desconocida"));
     }
 }

@@ -54,13 +54,12 @@ public class ChatbotService {
             una clínica digital del norte de Chile. Tu tono debe ser extremadamente \
             profesional, empático, claro y tranquilizador. Tu objetivo principal es \
             ayudar a los pacientes a resolver dudas administrativas y, sobre todo, \
-            agendar citas médicas de la manera más rápida y sencilla posible.
+            guiarlos para agendar citas médicas de la manera más rápida y sencilla \
+            posible.
 
-            HERRAMIENTAS DISPONIBLES (son las ÚNICAS que existen; nunca inventes \
-            el nombre de una herramienta distinta ni muestres JSON crudo en tu \
-            respuesta de texto, eso confunde al paciente):
-            - buscar_horarios_disponibles
-            - crear_cita_real
+            HERRAMIENTA DISPONIBLE (es la ÚNICA que existe; nunca inventes el nombre \
+            de una herramienta distinta ni muestres JSON crudo en tu respuesta de \
+            texto, eso confunde al paciente):
             - iniciar_flujo_ui
 
             REGLAS ESTRICTAS:
@@ -69,12 +68,13 @@ public class ChatbotService {
             síntomas graves (dolor de pecho intenso, dificultad para respirar, \
             sangrado severo, pérdida de conciencia, etc.), indícale de inmediato que \
             acuda a Urgencias o llame al 131, sin seguir el flujo de agendamiento.
-            2. Para agendar una cita, recopila esta información paso a paso (nunca \
-            pidas todo de golpe): a) especialidad o motivo de consulta, b) fecha \
-            preferida, c) nombre completo, d) RUT. Usa la herramienta \
-            buscar_horarios_disponibles antes de ofrecer un horario, y \
-            crear_cita_real solo cuando el paciente confirme explícitamente fecha, \
-            hora y datos personales.
+            2. Si el paciente confirma que quiere agendar una cita médica y SÍ tiene \
+            una cuenta activa, usa INMEDIATAMENTE iniciar_flujo_ui con tipo=AGENDAR. \
+            Nunca le pidas fecha, hora, especialidad, RUT ni motivo de consulta por \
+            el chat: esa herramienta abre un formulario visual donde el paciente ve \
+            los horarios reales disponibles y completa todo por su cuenta, igual que \
+            si hubiera entrado directamente a "Agendar Cita". Tú no reservas citas \
+            ni hablas con la agenda médica directamente.
             3. Utiliza un lenguaje sencillo, evitando tecnicismos innecesarios.
             4. Si te hacen una pregunta fuera del ámbito de la clínica, redirige \
             amablemente la conversación hacia los servicios médicos o el \
@@ -87,12 +87,19 @@ public class ChatbotService {
             formulario seguro para que lo complete por su cuenta.
             6. Si el paciente menciona que no puede iniciar sesión o tiene \
             problemas generales para entrar a su cuenta (sin especificar que \
-            olvidó la contraseña), usa iniciar_flujo_ui con tipo=LOGIN. \
-            Si en cambio dice explícitamente que olvidó su contraseña o \
-            quiere recuperarla/cambiarla, usa iniciar_flujo_ui con \
-            tipo=RECUPERAR de inmediato. Nunca le digas a alguien que olvidó \
-            su contraseña que "inicie sesión primero": eso es imposible y \
-            confunde al paciente. Nunca le pidas ni confirmes contraseñas por chat.
+            olvidó la contraseña), usa iniciar_flujo_ui con tipo=LOGIN. En tu \
+            respuesta en texto para este caso, habla únicamente de "iniciar \
+            sesión" o "ingresar a tu cuenta"; no menciones la palabra \
+            "contraseña" salvo para indicarle que la ingrese en el formulario.
+            7. Si el paciente dice explícitamente que olvidó su contraseña, no \
+            la recuerda, o quiere recuperarla/cambiarla/restablecerla, usa \
+            iniciar_flujo_ui con tipo=RECUPERAR de inmediato, SIN pasar primero \
+            por LOGIN. En tu respuesta en texto para este caso, habla \
+            únicamente de "recuperar" o "restablecer tu contraseña" y del \
+            código que le llegará al correo. NUNCA uses en esa misma respuesta \
+            las palabras "iniciar sesión" ni "LOGIN": decirle a alguien que \
+            olvidó su contraseña que "inicie sesión primero" es imposible y \
+            solo lo confunde. Nunca le pidas ni confirmes contraseñas por chat.
             """;
 
     public Mono<MensajeResponseDTO> procesarMensaje(MensajeRequestDTO dto) {
@@ -128,10 +135,10 @@ public class ChatbotService {
         if (dto.getUsuarioId() != null) {
             sb.append("- El paciente SÍ tiene una cuenta activa. Su nombre registrado es: ")
               .append(dto.getNombrePaciente() != null ? dto.getNombrePaciente() : "(no informado)")
-              .append(". Puedes agendar citas reales para él usando las herramientas disponibles.\n");
+              .append(". Si quiere agendar, usa iniciar_flujo_ui con tipo=AGENDAR.\n");
         } else {
             sb.append("- El paciente NO tiene una cuenta (es un visitante anónimo). Si pide agendar, " +
-                    "guíalo primero a crear una cuenta en /registro antes de continuar.\n");
+                    "usa iniciar_flujo_ui con tipo=REGISTRO primero: no puede agendar sin cuenta.\n");
         }
         return sb.toString();
     }
@@ -162,16 +169,27 @@ public class ChatbotService {
                                 boolean fallo = esResultadoConError(resultadoJson);
                                 MensajeResponseDTO accionDetectada = detectarAccion(llamada.getFunction().getName(), resultadoJson);
                                 if (accionDetectada != null) {
-                                    // La cita ya se agendo de verdad (o se detecto que requiere
-                                    // registro); pedimos una ultima respuesta en texto al modelo
-                                    // para que lo confirme con calidez, pero conservamos la accion.
+                                    // Recordatorio de ultimo momento, solo para RECUPERAR: los
+                                    // modelos pequenos (llama3.2:3b) a veces redactan la respuesta
+                                    // mencionando "LOGIN" igual, aunque la accion estructurada ya
+                                    // sea la correcta (bug real detectado y documentado). La regla
+                                    // ya esta en el system prompt, pero repetirla justo antes de
+                                    // este turno especifico aumenta mucho la probabilidad de que
+                                    // un modelo de 3B la respete, por estar mas cerca en el contexto.
+                                    if ("REDIRIGIR_RECUPERAR".equals(accionDetectada.getAccionRealizada())) {
+                                        historial.add(OllamaMensaje.sistema(
+                                                "RECORDATORIO: tu proxima respuesta es sobre RECUPERAR la " +
+                                                "contraseña. Habla solo de \"recuperar\" o \"restablecer la " +
+                                                "contraseña\" y del código que llegará al correo. No uses las " +
+                                                "palabras \"iniciar sesión\" ni \"LOGIN\" en esta respuesta."));
+                                    }
+                                    // Se detecto una intencion de UI (abrir un modal); pedimos
+                                    // una ultima respuesta en texto al modelo para que lo
+                                    // confirme con calidez, pero conservamos la accion.
                                     return ejecutarVuelta(historial, dto, vuelta + 1, esPrimerTurno, fallo || huboErrorHerramienta)
                                             .map(resp -> {
                                                 resp.setAccionRealizada(accionDetectada.getAccionRealizada());
                                                 resp.setDatosAccion(accionDetectada.getDatosAccion());
-                                                if ("CITA_AGENDADA".equals(accionDetectada.getAccionRealizada())) {
-                                                    resp.setEmocion(detectorEmocion.forzarCelebracion());
-                                                }
                                                 return resp;
                                             });
                                 }
@@ -228,19 +246,12 @@ public class ChatbotService {
     private MensajeResponseDTO detectarAccion(String nombreHerramienta, String resultadoJson) {
         try {
             var nodo = objectMapper.readTree(resultadoJson);
-            if ("crear_cita_real".equals(nombreHerramienta)) {
-                if (nodo.path("requiereRegistro").asBoolean(false)) {
-                    return new MensajeResponseDTO(null, "REDIRIGIR_REGISTRO", null);
-                }
-                if (nodo.path("exito").asBoolean(false)) {
-                    return new MensajeResponseDTO(null, "CITA_AGENDADA", nodo);
-                }
-            }
             if ("iniciar_flujo_ui".equals(nombreHerramienta) && nodo.path("exito").asBoolean(false)) {
                 String tipoFormulario = nodo.path("tipoFormulario").asText("REGISTRO");
                 String accion = switch (tipoFormulario) {
                     case "LOGIN" -> "REDIRIGIR_LOGIN";
                     case "RECUPERAR" -> "REDIRIGIR_RECUPERAR";
+                    case "AGENDAR" -> "REDIRIGIR_AGENDAR";
                     default -> "REDIRIGIR_REGISTRO";
                 };
                 return new MensajeResponseDTO(null, accion, null);

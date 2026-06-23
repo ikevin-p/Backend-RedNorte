@@ -5,6 +5,8 @@ import com.example.Backend_usuarios.model.Rol;
 import com.example.Backend_usuarios.model.Usuario;
 import com.example.Backend_usuarios.security.JwtAuthFilter;
 import com.example.Backend_usuarios.security.JwtUtil;
+import com.example.Backend_usuarios.service.EmailService;
+import com.example.Backend_usuarios.service.RecuperacionService;
 import com.example.Backend_usuarios.service.UsuarioService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +21,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -53,6 +56,12 @@ class UsuarioControllerTest {
 
     @MockitoBean
     private JwtAuthFilter jwtAuthFilter;
+
+    @MockitoBean
+    private RecuperacionService recuperacionService;
+
+    @MockitoBean
+    private EmailService emailService;
 
     private Usuario usuarioEjemplo;
 
@@ -163,5 +172,48 @@ class UsuarioControllerTest {
                 .andExpect(jsonPath("$.token").value("jwt-token-default"));
 
         verify(jwtUtil).generarToken("sinrol@correo.cl", "PACIENTE", "USR099");
+    }
+
+    @Test
+    @DisplayName("GET /usuarios/{id} con un usuario existente retorna 200 con su DTO")
+    void usuarioPorId_existente_retorna200() throws Exception {
+        when(usuarioService.buscarPorId("USR010")).thenReturn(Optional.of(usuarioEjemplo));
+
+        mockMvc.perform(get("/usuarios/USR010"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("USR010"))
+                .andExpect(jsonPath("$.mail").value("juan.perez@correo.cl"));
+    }
+
+    @Test
+    @DisplayName("GET /usuarios/{id} con un usuario inexistente retorna 404")
+    void usuarioPorId_inexistente_retorna404() throws Exception {
+        when(usuarioService.buscarPorId("USR999")).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/usuarios/USR999"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("POST /usuarios/notificaciones/confirmacion-cita dispara el correo y retorna 200")
+    void confirmacionCita_datosValidos_retorna200YEnviaCorreo() throws Exception {
+        doNothing().when(emailService).enviarConfirmacionCita(
+                anyString(), anyString(), anyString(), anyString(), anyString());
+
+        Map<String, String> body = Map.of(
+                "mail", "juan.perez@correo.cl",
+                "nombrePaciente", "Juan Perez",
+                "especialidad", "Cardiología",
+                "fecha", "2026-06-22",
+                "hora", "08:00");
+
+        mockMvc.perform(post("/usuarios/notificaciones/confirmacion-cita")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mensaje").exists());
+
+        verify(emailService).enviarConfirmacionCita(
+                "juan.perez@correo.cl", "Juan Perez", "Cardiología", "2026-06-22", "08:00");
     }
 }

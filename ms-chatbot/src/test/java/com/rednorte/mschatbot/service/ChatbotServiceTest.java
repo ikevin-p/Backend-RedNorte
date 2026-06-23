@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Mono;
@@ -112,78 +113,50 @@ class ChatbotServiceTest {
     void procesarMensaje_conToolCall_ejecutaHerramientaYContinua() {
         when(repository.findByIdentificadorConversacionOrderByFechaHoraAsc("conv-2"))
                 .thenReturn(List.of()) // antes de guardar el mensaje del usuario
-                .thenReturn(List.of(mensajeGuardado("user", "Quiero ver horarios del 22 de junio")));
+                .thenReturn(List.of(mensajeGuardado("user", "No puedo entrar a mi cuenta")));
 
         when(ollamaService.chat(anyList(), anyList()))
-                .thenReturn(Mono.just(respuestaConToolCall("buscar_horarios_disponibles", Map.of("fecha", "2026-06-22"))))
-                .thenReturn(Mono.just(respuestaTexto("Tengo disponible a las 08:00 con el Dr. Vega.")));
+                .thenReturn(Mono.just(respuestaConToolCall("iniciar_flujo_ui", Map.of("tipo", "LOGIN"))))
+                .thenReturn(Mono.just(respuestaTexto("Te abrí el formulario de inicio de sesión.")));
 
-        when(herramientas.ejecutar(eq("buscar_horarios_disponibles"), any(), eq("USR010"), any()))
-                .thenReturn(Mono.just("[{\"bloqueId\":501,\"hora\":\"08:00\",\"especialidad\":\"Cardiología\"}]"));
+        when(herramientas.ejecutar(eq("iniciar_flujo_ui"), any(), eq("USR010"), any()))
+                .thenReturn(Mono.just("{\"exito\": true, \"tipoFormulario\": \"LOGIN\"}"));
 
         MensajeRequestDTO dto = new MensajeRequestDTO();
-        dto.setMensaje("Quiero ver horarios del 22 de junio");
+        dto.setMensaje("No puedo entrar a mi cuenta");
         dto.setIdentificadorConversacion("conv-2");
         dto.setUsuarioId("USR010");
 
         StepVerifier.create(chatbotService.procesarMensaje(dto))
                 .assertNext(resp -> org.junit.jupiter.api.Assertions.assertEquals(
-                        "Tengo disponible a las 08:00 con el Dr. Vega.", resp.getRespuesta()))
+                        "Te abrí el formulario de inicio de sesión.", resp.getRespuesta()))
                 .verifyComplete();
 
-        verify(herramientas).ejecutar(eq("buscar_horarios_disponibles"), any(), eq("USR010"), any());
+        verify(herramientas).ejecutar(eq("iniciar_flujo_ui"), any(), eq("USR010"), any());
         // Se guarda: mensaje del usuario + resultado de la herramienta (tool) + respuesta final
         verify(repository, times(3)).save(any(MensajeChatbot.class));
     }
 
     @Test
-    @DisplayName("crear_cita_real exitosa marca accionRealizada=CITA_AGENDADA y fuerza emocion CELEBRACION")
-    void procesarMensaje_citaAgendadaExitosamente_marcaAccionYCelebracion() {
+    @DisplayName("iniciar_flujo_ui con tipo AGENDAR (paciente con cuenta) marca accionRealizada=REDIRIGIR_AGENDAR")
+    void procesarMensaje_iniciarFlujoUiAgendar_marcaRedirigirAgendar() {
         when(repository.findByIdentificadorConversacionOrderByFechaHoraAsc("conv-3")).thenReturn(List.of());
 
         when(ollamaService.chat(anyList(), anyList()))
-                .thenReturn(Mono.just(respuestaConToolCall("crear_cita_real", Map.of(
-                        "bloqueId", 501, "nombrePaciente", "Juan Pérez", "rut", "11111111-1", "motivoConsulta", "Control"))))
-                .thenReturn(Mono.just(respuestaTexto("¡Listo! Tu cita quedó agendada para el 22 de junio a las 08:00.")));
+                .thenReturn(Mono.just(respuestaConToolCall("iniciar_flujo_ui", Map.of("tipo", "AGENDAR"))))
+                .thenReturn(Mono.just(respuestaTexto("¡Claro! Te abrí el formulario para agendar tu cita.")));
 
-        when(herramientas.ejecutar(eq("crear_cita_real"), any(), eq("USR010"), any()))
-                .thenReturn(Mono.just("{\"exito\":true,\"consultaId\":999,\"fecha\":\"2026-06-22\",\"hora\":\"08:00\"}"));
+        when(herramientas.ejecutar(eq("iniciar_flujo_ui"), any(), eq("USR010"), any()))
+                .thenReturn(Mono.just("{\"exito\": true, \"tipoFormulario\": \"AGENDAR\"}"));
 
         MensajeRequestDTO dto = new MensajeRequestDTO();
-        dto.setMensaje("Sí, confirmo esa hora");
+        dto.setMensaje("Sí, quiero agendar una hora");
         dto.setIdentificadorConversacion("conv-3");
         dto.setUsuarioId("USR010");
         dto.setNombrePaciente("Juan Pérez");
 
         StepVerifier.create(chatbotService.procesarMensaje(dto))
-                .assertNext(resp -> {
-                    org.junit.jupiter.api.Assertions.assertEquals("CITA_AGENDADA", resp.getAccionRealizada());
-                    org.junit.jupiter.api.Assertions.assertEquals(DetectorEmocion.CELEBRACION, resp.getEmocion());
-                    org.junit.jupiter.api.Assertions.assertNotNull(resp.getDatosAccion());
-                })
-                .verifyComplete();
-    }
-
-    @Test
-    @DisplayName("crear_cita_real para visitante anonimo marca accionRealizada=REDIRIGIR_REGISTRO")
-    void procesarMensaje_visitanteAnonimoQuiereAgendar_marcaRedirigirRegistro() {
-        when(repository.findByIdentificadorConversacionOrderByFechaHoraAsc("conv-4")).thenReturn(List.of());
-
-        when(ollamaService.chat(anyList(), anyList()))
-                .thenReturn(Mono.just(respuestaConToolCall("crear_cita_real", Map.of(
-                        "bloqueId", 501, "nombrePaciente", "Anónimo", "rut", "11111111-1", "motivoConsulta", "Control"))))
-                .thenReturn(Mono.just(respuestaTexto("Para agendar necesitas crear una cuenta primero.")));
-
-        when(herramientas.ejecutar(eq("crear_cita_real"), any(), isNull(), any()))
-                .thenReturn(Mono.just("{\"exito\": false, \"requiereRegistro\": true}"));
-
-        MensajeRequestDTO dto = new MensajeRequestDTO();
-        dto.setMensaje("Quiero agendar una hora");
-        dto.setIdentificadorConversacion("conv-4");
-        dto.setUsuarioId(null);
-
-        StepVerifier.create(chatbotService.procesarMensaje(dto))
-                .assertNext(resp -> org.junit.jupiter.api.Assertions.assertEquals("REDIRIGIR_REGISTRO", resp.getAccionRealizada()))
+                .assertNext(resp -> org.junit.jupiter.api.Assertions.assertEquals("REDIRIGIR_AGENDAR", resp.getAccionRealizada()))
                 .verifyComplete();
     }
 
@@ -193,12 +166,11 @@ class ChatbotServiceTest {
         when(repository.findByIdentificadorConversacionOrderByFechaHoraAsc("conv-5")).thenReturn(List.of());
 
         when(ollamaService.chat(anyList(), anyList()))
-                .thenReturn(Mono.just(respuestaConToolCall("crear_cita_real", Map.of(
-                        "bloqueId", 501, "nombrePaciente", "Juan", "rut", "x", "motivoConsulta", "Control"))))
-                .thenReturn(Mono.just(respuestaTexto("Hubo un problema, ¿probamos con otro horario?")));
+                .thenReturn(Mono.just(respuestaConToolCall("iniciar_flujo_ui", Map.of("tipo", "ALGO_RARO"))))
+                .thenReturn(Mono.just(respuestaTexto("Hubo un problema, ¿podrías repetir tu solicitud?")));
 
-        when(herramientas.ejecutar(eq("crear_cita_real"), any(), eq("USR010"), any()))
-                .thenReturn(Mono.just("{\"exito\": false, \"error\": \"Bloque ya no disponible\"}"));
+        when(herramientas.ejecutar(eq("iniciar_flujo_ui"), any(), eq("USR010"), any()))
+                .thenReturn(Mono.just("{\"exito\": false, \"error\": \"Tipo de formulario no reconocido\"}"));
 
         MensajeRequestDTO dto = new MensajeRequestDTO();
         dto.setMensaje("Confirmo esa hora");
@@ -217,9 +189,9 @@ class ChatbotServiceTest {
 
         // El modelo siempre pide la misma herramienta, nunca da texto final por si solo.
         when(ollamaService.chat(anyList(), anyList()))
-                .thenReturn(Mono.just(respuestaConToolCall("buscar_horarios_disponibles", Map.of("fecha", "2026-06-22"))));
+                .thenReturn(Mono.just(respuestaConToolCall("iniciar_flujo_ui", Map.of("tipo", "LOGIN"))));
         when(herramientas.ejecutar(any(), any(), any(), any()))
-                .thenReturn(Mono.just("[]"));
+                .thenReturn(Mono.just("{\"exito\": true, \"tipoFormulario\": \"LOGIN\"}"));
 
         MensajeRequestDTO dto = new MensajeRequestDTO();
         dto.setMensaje("horarios");
@@ -336,6 +308,48 @@ class ChatbotServiceTest {
         StepVerifier.create(chatbotService.procesarMensaje(dto))
                 .assertNext(resp -> org.junit.jupiter.api.Assertions.assertEquals("REDIRIGIR_RECUPERAR", resp.getAccionRealizada()))
                 .verifyComplete();
+    }
+
+    @Test
+    @DisplayName("BUG REAL: tras detectar RECUPERAR, se inyecta un recordatorio para que el modelo " +
+            "no mezcle la palabra LOGIN en el texto de su respuesta")
+    void procesarMensaje_iniciarFlujoUiRecuperar_inyectaRecordatorioAntiMezcla() {
+        // Reproduce el caso real detectado: con llama3.2:3b, la ACCION
+        // estructurada (tipoFormulario=RECUPERAR) ya salia correcta, pero
+        // el TEXTO que el modelo redactaba a veces mencionaba "LOGIN" de
+        // todas formas, lo cual confunde al paciente aunque el frontend
+        // abra el modal correcto (decide por el campo, no por el texto).
+        when(repository.findByIdentificadorConversacionOrderByFechaHoraAsc("conv-12")).thenReturn(List.of());
+
+        when(ollamaService.chat(anyList(), anyList()))
+                .thenReturn(Mono.just(respuestaConToolCall("iniciar_flujo_ui", Map.of("tipo", "RECUPERAR"))))
+                .thenReturn(Mono.just(respuestaTexto("Te ayudo a recuperar tu contraseña.")));
+
+        when(herramientas.ejecutar(eq("iniciar_flujo_ui"), any(), any(), any()))
+                .thenReturn(Mono.just("{\"exito\": true, \"tipoFormulario\": \"RECUPERAR\"}"));
+
+        MensajeRequestDTO dto = new MensajeRequestDTO();
+        dto.setMensaje("olvidé mi contraseña");
+        dto.setIdentificadorConversacion("conv-12");
+        dto.setUsuarioId(null);
+
+        StepVerifier.create(chatbotService.procesarMensaje(dto))
+                .assertNext(resp -> org.junit.jupiter.api.Assertions.assertEquals("REDIRIGIR_RECUPERAR", resp.getAccionRealizada()))
+                .verifyComplete();
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<OllamaMensaje>> captor = ArgumentCaptor.forClass(List.class);
+        verify(ollamaService, times(2)).chat(captor.capture(), anyList());
+
+        List<OllamaMensaje> historialSegundaLlamada = captor.getAllValues().get(1);
+        boolean tieneRecordatorio = historialSegundaLlamada.stream().anyMatch(m ->
+                "system".equals(m.getRole())
+                        && m.getContent().contains("RECORDATORIO")
+                        && m.getContent().contains("RECUPERAR")
+                        && m.getContent().contains("LOGIN"));
+
+        org.junit.jupiter.api.Assertions.assertTrue(tieneRecordatorio,
+                "Se esperaba un mensaje de sistema recordando no mezclar LOGIN en la respuesta de RECUPERAR");
     }
 
     private MensajeChatbot mensajeGuardado(String rol, String contenido) {

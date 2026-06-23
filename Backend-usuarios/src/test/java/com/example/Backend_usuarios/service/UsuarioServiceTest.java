@@ -135,6 +135,27 @@ class UsuarioServiceTest {
         assertTrue(resultado.isEmpty());
     }
 
+    @Test
+    @DisplayName("Buscar por ID con usuario existente retorna el usuario")
+    void buscarPorId_existente_retornaUsuario() {
+        when(usuarioRepository.findById("USR001")).thenReturn(Optional.of(usuarioMock));
+
+        Optional<Usuario> resultado = usuarioService.buscarPorId("USR001");
+
+        assertTrue(resultado.isPresent());
+        assertEquals("admin@rednorte.cl", resultado.get().getMail());
+    }
+
+    @Test
+    @DisplayName("Buscar por ID con usuario inexistente retorna Optional vacio")
+    void buscarPorId_inexistente_retornaOptionalVacio() {
+        when(usuarioRepository.findById("USR999")).thenReturn(Optional.empty());
+
+        Optional<Usuario> resultado = usuarioService.buscarPorId("USR999");
+
+        assertTrue(resultado.isEmpty());
+    }
+
     // ─── ALMACENAR ───────────────────────────────────────────────────────────
 
     @Test

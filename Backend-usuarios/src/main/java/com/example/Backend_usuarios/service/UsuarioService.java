@@ -1,6 +1,7 @@
 package com.example.Backend_usuarios.service;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -34,6 +35,10 @@ public class UsuarioService {
 
     public List<Usuario> usuarioListar(){ 
         return this.usuarioRepository.findAll();
+    }
+
+    public Optional<Usuario> buscarPorId(String id) {
+        return this.usuarioRepository.findById(id);
     }
 
     public void usuarioRolAlmacenarA(String usuarioID, String rolID) {
