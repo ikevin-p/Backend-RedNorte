@@ -212,14 +212,25 @@ resilience4j:
         wait-duration-in-open-state: 15s
 
   timelimiter:
+    configs:
+      default:
+        # IMPORTANTE: Resilience4j envuelve cada circuit breaker con un
+        # TimeLimiter cuyo default es 1 SEGUNDO, independiente de
+        # cualquier timeout configurado en la ruta del gateway. Varios
+        # endpoints legitimos (ej. /usuarios/recuperacion/solicitar, que
+        # consulta la BD, inserta el codigo Y envia un correo real por
+        # SMTP) facilmente superan 1s y el TimeLimiter los cortaba,
+        # disparando el circuit breaker y devolviendo 503 al frontend
+        # AUNQUE el backend terminara procesando todo correctamente
+        # (por eso el correo igual llegaba). Mismo bug ya detectado y
+        # corregido especificamente para ms-chatbot; este default cubre
+        # a todos los demas circuit breakers que no tengan su propio
+        # override explicito.
+        timeout-duration: 8s
     instances:
-      # IMPORTANTE: Resilience4j usa un TimeLimiter con default de 1s
-      # que envuelve cada llamada del circuit breaker, INDEPENDIENTE del
-      # response-timeout configurado en la metadata de la ruta del
-      # gateway. Sin esta seccion, toda llamada a Ollama (que facilmente
-      # tarda mas de 1s en generar texto) expiraba por este timeout
-      # interno y caia al fallback, sin relacion con que ms-chatbot
-      # estuviera funcionando bien. Bug real detectado en produccion.
+      # Generar texto con Ollama puede tardar varios segundos (mas que
+      # cualquier otra consulta CRUD del sistema), asi que se tolera mas
+      # tiempo antes de considerar la llamada fallida.
       ms-chatbot-cb:
         timeout-duration: 55s
 
